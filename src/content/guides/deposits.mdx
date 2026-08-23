@@ -1,112 +1,111 @@
 ---
 title: Deposit into a vault
-description: Same-chain, cross-chain, and intent-based deposits in the LI.FI Earn module.
+description: Put funds into a yield vault, including from a chain you don't hold them on.
 ---
 
-The Earn module at `/integrations/lifi-earn` lists yield vaults and deposits into
-them. Which path Hexkit takes depends on where your funds are relative to the vault.
+Depositing takes three decisions: which vault, how much, and where the money is
+coming from. Hexkit works out the rest — if your funds sit on a different chain from
+the vault, it routes them for you.
 
-## Pick a path
+## Pick a vault
 
-<CardGroup cols={3}>
-  <Card title="Same chain">
-    Funds and vault on one chain. One approval, one deposit.
-  </Card>
-  <Card title="Intent route">
-    Cross-chain via an escrowed order filled by a solver. The default.
-  </Card>
-  <Card title="Composer route">
-    Cross-chain via a bridge, then a deposit. The fallback.
-  </Card>
-</CardGroup>
+Open **Integrations → LI.FI Earn** and switch to the **Vaults** tab. Filter by chain,
+protocol, or tag, and sort by APY, TVL, or name.
 
-`DepositFlow` selects the path for you. When your funding chain differs from the
-vault's chain it prefers the intent route and falls back to the composer route when
-no intent quote is available.
+![The vaults grid with chain, protocol and tag filters](/images/earn-vaults.png)
 
-## Same-chain deposits
+Before committing, check three things on the vault card:
 
-Enter an amount and confirm. Hexkit requests a Composer quote, approves the token
-for the returned spender if the allowance is short, and submits the deposit.
+- **The APY history.** Expand the card to see 1d, 7d, and 30d figures. A large gap
+  between today and the 30-day average means the rate is moving.
+- **The split between base and reward APY.** Reward APY depends on incentives that
+  can stop.
+- **Any risk signals.** Vaults marked **Caution** list their signals when you open
+  them.
 
-Approvals go through `safeApproveErc20`, which approves the exact amount rather than
-an unlimited allowance and resets a nonzero allowance to zero first when the token
-requires it, so USDT-style tokens do not revert.
+![A vault risk warning listing its specific signals](/images/earn-risk-warning.png)
 
-## Cross-chain deposits over an intent route
+<Tip>
+  You can browse, filter, and inspect every vault without connecting a wallet. Paste
+  any address into the address field to see that address's positions.
+</Tip>
+
+## Deposit from the same chain
+
+The simplest case: your funds are already on the vault's chain.
 
 <Steps>
-  <Step title="Choose the funding chain and token">
-    The source picker offers the eight chains listed in [Configuration](/configuration).
-    Hexkit quotes only routes it can actually build.
+  <Step title="Connect your wallet">
+    Use the connect button in the header. Hexkit needs this only to sign — browsing
+    works without it.
   </Step>
-  <Step title="Review the quote">
-    `IntentBridgeStep` shows the output you will receive and the deadline the solver
-    has to fill it. A quote returning no positive output is rejected rather than
-    turned into an order.
+  <Step title="Enter an amount">
+    Hexkit quotes the deposit and shows what you will receive.
   </Step>
-  <Step title="Approve the input token">
-    A standard ERC-20 approval to `INPUT_SETTLER_ESCROW`, for the exact input amount.
+  <Step title="Approve the token">
+    If the vault does not yet have permission to move your token, you will be asked
+    to approve it. Hexkit requests approval for the exact amount you are depositing,
+    not an unlimited allowance.
   </Step>
-  <Step title="Open the order">
-    One `open()` transaction escrows your input. Before signing, Hexkit checks that
-    the connected wallet still matches the order and that the fill window is still
-    open.
-  </Step>
-  <Step title="Wait for delivery">
-    The timeline moves **Opened → Signed → Delivered → Settled**. At "Delivered" the
-    output is on the destination chain and the vault deposit is offered.
-  </Step>
-  <Step title="Deposit into the vault">
-    Hexkit measures the delivered amount as a balance delta, approves the vault
-    spender, and submits the deposit.
+  <Step title="Confirm the deposit">
+    One more signature and the deposit is submitted. Your position appears under
+    **My Positions**.
   </Step>
 </Steps>
 
-If you switch wallet accounts after quoting, the quote resets. The order records the
-connected account as both escrow depositor and refund payee, so a stale quote must
-not survive an account change.
+## Deposit from a different chain
 
-## Cross-chain deposits over the composer route
+If your funds are on another chain, Hexkit bridges and deposits in one flow. You
+choose the funding chain and token; it finds a route.
 
-When no intent quote is available, `executeCrossChainComposerDeposit` runs a
-two-transaction sequence: bridge the token to the destination chain, wait for
-settlement, then deposit. Progress appears in the cross-chain timeline.
-
-Settlement polling runs for up to 30 minutes and classifies the outcome as
-completed, refunded, or partial. A refunded or partial bridge is reported as such —
-it does not continue to the deposit step.
+<Steps>
+  <Step title="Choose where the money comes from">
+    Pick the chain and token you want to spend. Hexkit only offers routes it can
+    actually build.
+  </Step>
+  <Step title="Review the quote">
+    You will see how much arrives on the destination chain and how long the route
+    has to complete.
+  </Step>
+  <Step title="Approve and open the order">
+    One approval, then one signature. Your tokens are locked in escrow on the
+    source chain.
+  </Step>
+  <Step title="Watch the timeline">
+    A four-step timeline tracks the route: **Opened → Signed → Delivered → Settled**.
+    "Opened" means your funds are escrowed; "Delivered" means the tokens have arrived
+    on the destination chain.
+  </Step>
+  <Step title="Complete the deposit">
+    Once delivered, Hexkit measures what actually arrived and offers the vault
+    deposit. Confirm it and you are done.
+  </Step>
+</Steps>
 
 <Note>
-  The composer route requires two wallet signatures on two different chains, and the
-  app will prompt you to switch networks between them. The intent route requires
-  only one signature, on the source chain.
+  A cross-chain deposit needs two signatures on the source chain (approve, then
+  open) and one on the destination chain (the deposit itself). Hexkit prompts you to
+  switch networks at the right moment.
 </Note>
 
-## Recovering a stalled deposit
+[How cross-chain works](/concepts/intent-orders) explains what the timeline is
+tracking, if you want the detail.
 
-| Situation | What to do |
-|---|---|
-| Quote expired before you opened | Request a new quote. Nothing was signed. |
-| `open()` broadcast, receipt slow | Wait. Do not retry — see below. |
-| Order never filled | Refund after `expires`. See [How intent orders work](/concepts/intent-orders). |
-| Bridge settled, deposit failed | Use the retry control; the delivered amount is re-read. |
+## If something goes wrong
+
+| What you see | What it means | What to do |
+|---|---|---|
+| No quote available | No route exists for that pair right now | Try a different funding token or chain |
+| Quote expired | You waited too long before confirming | Request a new quote — nothing was signed |
+| Stuck on "Opened" | No one has picked up your order yet | Wait. If it never fills, you can reclaim your funds |
+| Deposit failed after delivery | The funds arrived but the deposit did not complete | Use the retry control; your funds are safe on the destination chain |
 
 <Warning>
-  If an `open()` transaction was broadcast, do not request a fresh quote to "try
-  again". A retry builds a new order with a new nonce, so both orders can be filled
-  and you would bridge twice. Hexkit disables the retry control while a broadcast
-  transaction is outstanding and shows its hash instead.
+  If you have already signed the transaction that opens an order, do not start over
+  with a new quote. The first transaction may still be confirming, and starting again
+  creates a **second** order — both can complete, and you would move twice the money
+  you intended. Hexkit disables the retry button in this situation and shows the
+  transaction so you can check it.
 </Warning>
 
-More failure modes are covered in [Troubleshooting](/troubleshooting).
-
-## Where this lives
-
-| Concern | Location |
-|---|---|
-| Flow orchestration | `DepositFlow.tsx` |
-| Intent step UI | `IntentBridgeStep.tsx` |
-| Composer route executor | `crossChainComposerDeposit.ts` |
-| Destination token choices | `destinationTokenOptions.ts` |
-| Approvals | `txUtils.ts` (`safeApproveErc20`) |
+[Troubleshooting](/troubleshooting) covers every error message in full.

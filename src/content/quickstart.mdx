@@ -1,96 +1,97 @@
 ---
 title: Quickstart
-description: Run Hexkit locally and complete your first cross-chain vault deposit.
+description: Open Hexkit and complete your first task — no install, no account.
 ---
 
-Hexkit is a browser toolkit for working with EVM transactions: a calldata decoder,
-a signature database, a transaction builder, a simulator, a source explorer, a
-storage viewer, a debugger, and the LI.FI Earn module for vault deposits and
-withdrawals.
+Hexkit runs in your browser at
+[web3-toolkit.vercel.app](https://web3-toolkit.vercel.app). There is nothing to
+install and no account to create. Open it and you can start decoding calldata
+immediately; connect a wallet only when you want to sign something.
 
-This page gets the app running and walks one meaningful task end to end — depositing
-into a vault from a different chain.
-
-## Before you begin
-
-- Node.js 20 or newer, and npm
-- A browser wallet holding a small amount of a supported token
-- A [LI.FI API key](https://li.fi) if you plan to use the Earn module
-
-Nothing else is required to start. The Rust EDB backend powers the debugger only,
-and every workflow on this page runs without it.
+## Your first minute
 
 <Steps>
-  <Step title="Install dependencies">
-    ```bash
-    git clone https://github.com/Timidan/hexkit.git
-    cd hexkit
-    npm install
-    ```
+  <Step title="Open the app">
+    Go to [web3-toolkit.vercel.app](https://web3-toolkit.vercel.app). The command
+    bar at the top accepts an address, a transaction hash, a 4-byte selector, or a
+    page name — press <kbd>⌘K</kbd> (or <kbd>Ctrl</kbd>+<kbd>K</kbd>) to focus it
+    from anywhere.
   </Step>
-  <Step title="Add the minimum configuration">
-    Copy the example file and fill in the two values the Earn module needs.
-
-    ```bash
-    cp .env.example .env
-    ```
-
-    ```bash
-    LIFI_API_KEY=your-lifi-key
-    VITE_WALLETCONNECT_PROJECT_ID=your-walletconnect-id
-    ```
-
-    Leave every other value at its default for now. [Configuration](/configuration)
-    explains the full set.
+  <Step title="Choose your RPC, or skip it">
+    On first load Hexkit asks whether to use your own RPC provider or the built-in
+    public endpoints. Public defaults work fine for reading and decoding; they are
+    shared, so they can be rate-limited under load. You can change this later.
   </Step>
-  <Step title="Start the dev server">
-    ```bash
-    npm run dev
-    ```
-
-    Vite serves the app on `http://localhost:5173` and proxies the API routes
-    described in [Configuration](/configuration), so no separate backend is needed.
+  <Step title="Decode a transaction">
+    Paste any mainnet transaction hash into the command bar. Hexkit resolves the
+    function selector against its signature database and shows the decoded
+    parameters with their types and values — no ABI required, and no wallet
+    connection.
   </Step>
-  <Step title="Deposit into a vault from another chain">
-    Open `/integrations/lifi-earn`, connect your wallet, and pick a vault on a
-    chain you do **not** currently hold funds on. Choose your funding chain and
-    token in the source picker, enter an amount, and start the deposit.
-
-    Hexkit quotes an intent order, asks you to approve the input token, then asks
-    you to sign one `open()` transaction.
-  </Step>
-  <Step title="Verify the result">
-    A four-step timeline appears: **Opened → Signed → Delivered → Settled**.
-    "Opened" confirms your tokens are escrowed on the source chain. When it reaches
-    "Delivered", the vault deposit becomes available on the destination chain.
-
-    If the timeline stalls, [Troubleshooting](/troubleshooting) covers each state
-    and the refund path.
+  <Step title="Simulate before you sign">
+    From a decoded transaction, run a simulation to see the asset changes it would
+    produce — which tokens move, in what direction, and by how much — before it
+    ever reaches your wallet.
   </Step>
 </Steps>
 
-## Verify the build
+<Tip>
+  Everything above works without connecting a wallet. Connect one only for actions
+  that need a signature, like depositing into a vault.
+</Tip>
 
-Before opening a pull request, confirm the same checks CI runs:
+## Browse yield vaults
 
-```bash
-npm run build   # tsc -b && vite build
-npm run lint
-```
+Open **Integrations → LI.FI Earn** to browse vaults across 20+ protocols. Filter by
+chain, protocol, or tag, and sort by APY, TVL, or name.
 
-## Choose the next task
+![The LI.FI Earn vaults grid, showing APY, TVL, chain and protocol for each vault](/images/earn-vaults.png)
+
+You do not need to connect a wallet to look. Paste any address into the
+**Paste address…** field and Hexkit will show that address's positions — useful for
+inspecting a wallet you do not control.
+
+### Read the risk signals first
+
+Vaults carrying risk signals are marked **Caution**. Opening one shows exactly which
+signals fired before you go any further.
+
+![A vault risk warning listing Micro TVL and Reward-heavy signals, with Go back and Continue anyway](/images/earn-risk-warning.png)
+
+`Micro TVL` means very little capital is deposited. `Reward-heavy` means most of the
+headline APY comes from incentive rewards rather than the vault's base yield, so it
+can fall sharply when the incentives end. Neither is automatically disqualifying —
+they are things to check rather than warnings to dismiss.
+
+### Look past the headline APY
+
+Expanding a vault shows its APY over 1, 7, and 30 days alongside a trend line, its
+TVL, and the underlying contract address.
+
+![An expanded vault card showing 1d, 7d and 30d APY history with a trend line](/images/earn-vault-card.png)
+
+A vault advertising 138% today but 105% across the last 30 days is telling you
+something the headline number is not.
+
+## Deposit into a vault
+
+Connect your wallet, pick a vault, and enter an amount. If your funds are on a
+different chain from the vault, Hexkit handles the cross-chain path for you — see
+[Deposit into a vault](/guides/deposits) for the full walkthrough.
+
+## Where to go next
 
 <CardGroup cols={2}>
   <Card title="Deposit into a vault" href="/guides/deposits">
-    Same-chain, cross-chain, and intent-based deposit paths.
+    Same-chain and cross-chain deposits, step by step.
   </Card>
   <Card title="Withdraw from a vault" href="/guides/withdrawals">
-    Redeem shares and route the proceeds to another chain or token.
+    Redeem shares and move the proceeds where you want them.
   </Card>
-  <Card title="How intent orders work" href="/concepts/intent-orders">
-    Escrow, deadlines, solvers, settlement, and refunds.
+  <Card title="How cross-chain works" href="/concepts/intent-orders">
+    What the four-step timeline is actually tracking.
   </Card>
-  <Card title="Configuration" href="/configuration">
-    Every environment variable and proxy route.
+  <Card title="Troubleshooting" href="/troubleshooting">
+    What each error means and how to recover.
   </Card>
 </CardGroup>

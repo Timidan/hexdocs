@@ -1,10 +1,16 @@
 ---
 title: Troubleshooting
-description: Diagnose failed quotes, stalled orders, rejected approvals, and proxy errors.
+description: What each error means and how to get your funds moving again.
 ---
 
-Work down from the symptom you can see. Most failures in the Earn module fall into
-one of four groups: the quote, the approval, the order, or the proxy.
+Find the message you saw. Most problems in LI.FI Earn fall into one of four groups:
+the quote, the approval, the order, or the connection.
+
+<Note>
+  Nothing here can lose your funds silently. If a route stalls, your money is either
+  still in your wallet or held in escrow where you can reclaim it — the sections
+  below say which.
+</Note>
 
 ## Quotes
 
@@ -13,7 +19,7 @@ one of four groups: the quote, the approval, the order, or the proxy.
     No solver offered a price for that pair, or the route is unsupported. Try a
     different funding token or chain, or switch to the composer route. Cross-chain
     vault deposits are only offered on the eight chains listed in
-    [Configuration](/configuration).
+    [Self-hosting](/self-hosting).
   </Accordion>
   <Accordion title="Quote returned no usable output amount">
     The quote came back with a zero or unparseable output. Hexkit rejects it rather
@@ -104,11 +110,15 @@ one of four groups: the quote, the approval, the order, or the proxy.
   </Accordion>
 </AccordionGroup>
 
-## Proxy and network errors
+## Connection and network errors
+
+These come from the API layer. On the hosted app you should rarely see them; on a
+self-hosted instance they usually point at configuration — see
+[Self-hosting](/self-hosting).
 
 | Response | Meaning | Fix |
 |---|---|---|
-| `403 Forbidden` | `PROXY_SECRET` is set | Unset it. The browser client cannot send `x-proxy-secret` — see [Configuration](/configuration) |
+| `403 Forbidden` | `PROXY_SECRET` is set | Unset it. The browser client cannot send `x-proxy-secret` — see [Self-hosting](/self-hosting) |
 | `403 Origin not allowed` | Origin missing from the allowlist | Add it to `ALLOWED_ORIGINS` |
 | `404 unsupported_intents_path` | Subpath not on the allowlist | Only the six documented subpaths are proxied |
 | `413 body_too_large` | Request body over 16 KiB | Usually a malformed request; check the payload |

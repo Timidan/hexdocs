@@ -27,11 +27,22 @@
       "groups": [
         {
           "group": "Get started",
-          "pages": ["introduction", "quickstart", "configuration"]
+          "pages": [
+            "introduction",
+            "quickstart"
+          ]
         },
         {
           "group": "Concepts",
-          "pages": ["concepts/intent-orders"]
+          "pages": [
+            "concepts/intent-orders"
+          ]
+        },
+        {
+          "group": "Run your own",
+          "pages": [
+            "self-hosting"
+          ]
         }
       ]
     },
@@ -40,11 +51,16 @@
       "groups": [
         {
           "group": "LI.FI Earn",
-          "pages": ["guides/deposits", "guides/withdrawals"]
+          "pages": [
+            "guides/deposits",
+            "guides/withdrawals"
+          ]
         },
         {
           "group": "Support",
-          "pages": ["troubleshooting"]
+          "pages": [
+            "troubleshooting"
+          ]
         }
       ]
     },
@@ -53,7 +69,10 @@
       "groups": [
         {
           "group": "Overview",
-          "pages": ["api/introduction", "api/authentication"]
+          "pages": [
+            "api/introduction",
+            "api/authentication"
+          ]
         }
       ],
       "api": {

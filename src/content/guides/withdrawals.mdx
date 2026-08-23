@@ -1,98 +1,84 @@
 ---
 title: Withdraw from a vault
-description: Redeem vault shares and route the proceeds to another chain or token.
+description: Take funds out of a vault and move them where you want them.
 ---
 
-Withdrawing is two independent halves. First you redeem vault shares for the
-underlying token on the vault's own chain. Then, optionally, you route that
-underlying somewhere else.
+Withdrawing happens in two parts. First you redeem your vault shares for the
+underlying token, on the vault's own chain. Then, if you want the money somewhere
+else, Hexkit routes it there.
 
-The first half always happens. The second is only offered when you ask for a
-different chain or token.
+The first part always happens. The second is optional, and you can skip it.
 
-## Amounts are denominated in shares
+## Amounts are in shares, not tokens
 
-The withdraw field takes **vault shares**, not underlying tokens. A vault whose
-share has appreciated is worth more than one underlying per share, so the two
-numbers differ.
+When you deposit, you receive **vault shares**. As the vault earns, each share
+becomes worth more than one underlying token — so 100 shares is not 100 USDC.
 
-`WithdrawFlow` reads your share balance on-chain and labels the field
-`Amount (in vault shares)`, with the approximate underlying value shown beneath it.
-The MAX button and the 25/50/75 shortcuts all operate on the share balance.
+The withdraw field asks for **shares**, and labels it that way. Underneath, Hexkit
+shows the approximate value in the underlying token so you can sanity-check the
+number. The MAX button and the 25/50/75% shortcuts all work in shares.
 
 <Note>
-  If the share-balance read fails, the flow disables submission and shows a retry
-  control rather than guessing. Redeeming with the wrong denomination would withdraw
-  a different amount than the one displayed.
+  If Hexkit cannot read your share balance, it disables the withdraw button and
+  offers a retry rather than guessing. Withdrawing against an unknown balance could
+  redeem a different amount than the one shown.
 </Note>
 
-## Redeem on the vault's chain
+## Redeem your shares
 
 <Steps>
-  <Step title="Enter a share amount">
-    Validation compares against your on-chain share balance.
+  <Step title="Open your position">
+    Go to **My Positions** in LI.FI Earn and select the vault.
   </Step>
-  <Step title="Confirm the redeem">
-    One transaction. Hexkit waits for the receipt and checks it did not revert.
+  <Step title="Enter an amount in shares">
+    Use MAX to withdraw everything, or a percentage shortcut.
   </Step>
-  <Step title="Check the balance delta">
-    The underlying balance is compared before and after to determine what you
-    actually received. That figure sizes any follow-on routing.
+  <Step title="Confirm">
+    One signature. Once it confirms, you hold the underlying token on the vault's
+    chain.
   </Step>
 </Steps>
 
-If the redeem confirms but the balance delta is not yet visible — a stale RPC read
-immediately after the receipt — the flow reports the redeem as complete and does not
-resubmit it. Your shares are already redeemed at that point; only the routing half
-is affected.
+At this point the withdrawal itself is complete. Everything below is about moving
+those tokens somewhere else.
 
-## Route the proceeds elsewhere
+## Send the proceeds elsewhere
 
-Choose a different destination chain or token and Hexkit offers one of two routes,
-mirroring the deposit side.
+Choose a different destination chain or token and Hexkit will route the redeemed
+tokens for you, using the same mechanism as a cross-chain deposit.
 
-<Tabs>
-  <Tab title="Intent route">
-    `WithdrawIntentRouteStep` quotes an intent order, escrows the redeemed
-    underlying via `open()`, and tracks it on the same four-step timeline —
-    **Opened → Signed → Delivered → Settled**.
+<Steps>
+  <Step title="Choose the destination">
+    Pick the chain and token you want to end up with.
+  </Step>
+  <Step title="Approve and open">
+    One approval, one signature. Your redeemed tokens are escrowed.
+  </Step>
+  <Step title="Watch the timeline">
+    The same four steps as a deposit: **Opened → Signed → Delivered → Settled**. When
+    it reaches "Delivered", the tokens are on the destination chain.
+  </Step>
+</Steps>
 
-    As with deposits, the connected account and the fill window are both rechecked
-    immediately before signing.
-  </Tab>
-  <Tab title="Composer route">
-    `withdrawComposerRoute` bridges the redeemed underlying using a Composer route
-    and polls for settlement for up to 30 minutes, classifying the result as
-    completed, refunded, or partial.
-  </Tab>
-</Tabs>
+### Or just keep the underlying
 
-## Keeping the underlying instead
+Routing is always optional. If no route is available, or you would rather hold the
+redeemed token where it is, decline the routing step. Your shares are already
+redeemed — nothing is lost by stopping there.
 
-Routing is optional at every point. If no route is available, or you would rather
-hold the redeemed token on the vault's chain, the flow offers to stop there. The
-redeem has already settled, so nothing is lost by declining to route.
+## If something goes wrong
 
-## Recovering a stalled withdrawal
-
-| Situation | What to do |
-|---|---|
-| Redeem confirmed, routing did not start | The shares are redeemed. Start a fresh route, or keep the underlying. |
-| Route quote expired before signing | Request a new quote. Nothing was escrowed. |
-| Order never filled | Refund after `expires`. See [How intent orders work](/concepts/intent-orders). |
-| Bridge reported refunded | The underlying returned to the vault's chain. Retry or keep it. |
+| What you see | What it means | What to do |
+|---|---|---|
+| Withdraw button disabled | Hexkit could not read your share balance | Use the retry control |
+| "Balance delta is not visible yet" | The redeem succeeded, but the balance read was stale | Your shares **are** redeemed. Start a fresh route or keep the tokens |
+| Route quote expired | You waited too long before confirming | Request a new quote — nothing was escrowed |
+| Stuck on "Opened" | No one has picked up the order | Wait. If it never fills, you can reclaim the funds |
 
 <Warning>
-  As with deposits, do not re-quote a route whose `open()` was already broadcast. A
-  fresh quote means a fresh nonce and a second escrow. The retry control is disabled
-  while a broadcast transaction is outstanding.
+  As with deposits, if you have already signed the transaction that opens a route, do
+  not re-quote and start again — that creates a second order and can move your money
+  twice. Hexkit disables the retry control while a transaction is outstanding.
 </Warning>
 
-## Where this lives
-
-| Concern | Location |
-|---|---|
-| Flow orchestration | `WithdrawFlow.tsx` |
-| Intent route UI | `WithdrawIntentRouteStep.tsx` |
-| Composer route executor | `withdrawComposerRoute.ts` |
-| Quote fetching | `hooks/useWithdrawQuote.ts` |
+[Troubleshooting](/troubleshooting) has the full list of error messages.
