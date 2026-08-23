@@ -1,0 +1,120 @@
+---
+title: How intent orders work
+description: Escrow, deadlines, solvers, settlement, and refunds for cross-chain vault routes.
+---
+
+When you deposit into a vault on a chain you do not hold funds on, Hexkit does not
+bridge your tokens itself. It writes an **intent order**: a signed statement that
+you will pay a specific input on one chain if someone delivers a specific output on
+another. A third party — a solver — fronts the output and later claims your escrowed
+input by proving the delivery.
+
+This is what the four-step timeline in the UI is tracking.
+
+## The order
+
+`buildStandardOrder` in `src/lib/intents/standardOrder.ts` produces an
+ERC-7683-style `StandardOrder` from a quote. Two fields decide who is who:
+
+- **`user`** — the escrow depositor and the refund payee.
+- **`outputs[].recipient`** — who receives the delivered output.
+
+`open()` collects the input from `msg.sender`, but a refund pays `user`. Hexkit
+asserts that the connected wallet matches `order.user` immediately before signing,
+because if those diverge one account funds an order that pays another.
+
+Addresses inside the order are encoded two different ways, which is worth knowing
+when reading the code:
+
+- `MandateOutput` fields are left-padded `bytes32` (`addressToBytes32`).
+- Quote endpoints use EIP-7930 chain-tagged addresses (`encodeEip7930EvmAddress`),
+  which carry the chain id alongside the address.
+
+Each order gets a fresh nonce from `nextOrderNonce()`. The escrow requires
+uniqueness per user and origin chain, not monotonicity, so the nonce packs a
+timestamp, 32 random bits, and a counter.
+
+## The two deadlines
+
+<ParamField path="fillDeadline" type="uint32">
+  The solver's cutoff. After this, no one can fill the order.
+</ParamField>
+
+<ParamField path="expires" type="uint32">
+  When `refund()` unlocks on the origin chain. Always later than `fillDeadline`.
+</ParamField>
+
+`buildDeadlinePlan` sets `fillDeadline` to `min(quote validUntil, now + 15 minutes)`
+and `expires` to `fillDeadline + 30 minutes`. The gap is settlement grace: an order
+can be filled at the last second and still needs time for the oracle to attest
+before the input becomes refundable.
+
+Because a quote can sit on screen while you read it, Hexkit calls
+`assertFillWindowOpen` immediately before signing and refuses an order whose window
+has closed. Opening into a passed `fillDeadline` would escrow funds that no solver
+can claim, leaving you to wait out `expires` and refund manually.
+
+<Note>
+  `validUntil` arrives from the API as a numeric Unix timestamp, though ISO strings
+  have also been seen. `parseQuoteValidUntil` accepts epoch seconds, epoch
+  milliseconds, and ISO, because feeding a numeric timestamp to `Date.parse`
+  silently yields `NaN` and would discard the real expiry.
+</Note>
+
+## Order lifecycle
+
+The states below come from `readOrderState` in `intentsApi.ts`.
+`IntentStatusTimeline` maps them onto four visible steps.
+
+| Timeline step | Underlying state | Meaning |
+|---|---|---|
+| Opened | `Open`, `Submitted` | Input escrowed on the origin chain |
+| Signed | `Signed` | A solver committed to the order |
+| Delivered | `Delivered` | Output arrived on the destination chain |
+| Settled | `Settled` | Proof verified, escrow released to the solver |
+
+Three states are terminal failures: `Refunded`, `Failed`, and `Expired`. The
+timeline also flags a stall on its own — if `fillDeadline` passes while the order is
+still unsigned, it marks the step failed rather than spinning indefinitely.
+
+`useIntentOrderStatus` polls `orders/status` every 3 seconds, easing to 8 seconds
+once the order is `Delivered`, and stops entirely on a terminal state.
+
+## Getting your money back
+
+If no solver fills the order, the input stays escrowed until `expires`. After that,
+`refund()` returns it to `order.user`.
+
+Refunds are not automatic. The UI surfaces a refund control once the order is
+refundable, and Hexkit checks the refund receipt for a revert rather than assuming
+success.
+
+## Reading the delivered amount
+
+After delivery, Hexkit needs to know how much actually arrived in order to size the
+follow-up vault deposit. It snapshots the destination balance **before** opening the
+order and subtracts it afterwards.
+
+That pre-snapshot is mandatory. If the read fails, Hexkit refuses to open the order
+at all, because without a baseline it cannot tell solver-delivered tokens from funds
+you already held — and depositing the difference would sweep unrelated balances.
+
+<Warning>
+  The delta is a balance difference, not an attribution. If an unrelated transfer of
+  the same token lands on the destination chain while an order is settling, it is
+  counted as part of the delivery. Avoid moving the same token to the same address
+  by other means while a route is in flight.
+</Warning>
+
+## Where this lives
+
+| Concern | Location |
+|---|---|
+| Order construction | `src/lib/intents/standardOrder.ts` |
+| Deadlines | `src/lib/intents/deadlines.ts` |
+| Nonces | `src/lib/intents/nonce.ts` |
+| Address encoding | `src/lib/intents/eip7930.ts`, `addressBytes.ts` |
+| Contract addresses and ABI | `src/lib/intents/contracts.ts` |
+| API client | `src/components/integrations/lifi-earn/intentsApi.ts` |
+| Status polling | `useIntentOrderStatus.ts` |
+| Timeline UI | `IntentStatusTimeline.tsx` |

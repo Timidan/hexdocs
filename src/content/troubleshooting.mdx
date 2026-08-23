@@ -1,0 +1,133 @@
+---
+title: Troubleshooting
+description: Diagnose failed quotes, stalled orders, rejected approvals, and proxy errors.
+---
+
+Work down from the symptom you can see. Most failures in the Earn module fall into
+one of four groups: the quote, the approval, the order, or the proxy.
+
+## Quotes
+
+<AccordionGroup>
+  <Accordion title="No quote available for this route">
+    No solver offered a price for that pair, or the route is unsupported. Try a
+    different funding token or chain, or switch to the composer route. Cross-chain
+    vault deposits are only offered on the eight chains listed in
+    [Configuration](/configuration).
+  </Accordion>
+  <Accordion title="Quote returned no usable output amount">
+    The quote came back with a zero or unparseable output. Hexkit rejects it rather
+    than building an order, because an order with a zero output can be filled by
+    transferring nothing while still claiming your escrowed input. Request a new
+    quote; if it repeats, the route is not currently viable.
+  </Accordion>
+  <Accordion title="This quote expired before the order was opened">
+    The fill window closed while the quote sat on screen. Nothing was signed and no
+    funds moved. Request a new quote and confirm it more promptly.
+  </Accordion>
+  <Accordion title="Quote too close to expiry to safely open an order">
+    The quote arrived already near its deadline. Request another; this is normal
+    when the upstream API is under load.
+  </Accordion>
+</AccordionGroup>
+
+## Approvals
+
+<AccordionGroup>
+  <Accordion title="Couldn't read the current token allowance">
+    An RPC read failed. Hexkit refuses to approve without knowing the current
+    allowance, because skipping the reset step makes USDT-style tokens revert. Retry
+    in a moment.
+  </Accordion>
+  <Accordion title="The approval transaction reverts">
+    Most often a token that forbids changing a nonzero allowance directly. Hexkit
+    resets to zero first, so if this persists, check whether the token is paused or
+    blocklisted for your address.
+  </Accordion>
+</AccordionGroup>
+
+## Orders
+
+<AccordionGroup>
+  <Accordion title="The connected account changed after this quote was built">
+    You switched wallet accounts between quoting and opening. The order records the
+    connected account as both escrow depositor and refund payee, so Hexkit refuses to
+    sign rather than let one account fund an order that pays another. Request a new
+    quote on the account you intend to use.
+  </Accordion>
+  <Accordion title="The timeline is stuck on Opened">
+    No solver has committed yet. If `fillDeadline` passes while the order is still
+    unsigned, the timeline marks the step failed. Your input stays escrowed until
+    `expires`, after which the refund control unlocks.
+  </Accordion>
+  <Accordion title="An order was already broadcast for this quote">
+    An `open()` transaction went out but its receipt did not arrive in time. The
+    transaction may still confirm. Hexkit disables the retry control and shows the
+    hash so you can check it on the explorer.
+
+    <Warning>
+      Do not re-quote to "try again". A new quote means a new nonce and a second
+      escrow, and both orders can be filled — you would bridge twice.
+    </Warning>
+  </Accordion>
+  <Accordion title="open() reverted on-chain">
+    Usually an allowance that was not in place, or an order whose deadline passed
+    between signing and inclusion. Nothing is escrowed when `open()` reverts.
+    Request a new quote.
+  </Accordion>
+  <Accordion title="Open(orderId) event could not be decoded">
+    The transaction landed but Hexkit could not read the order id from the logs, so
+    it cannot poll status. The escrow exists. Note the transaction hash and check
+    the order on the explorer; this usually means the settler ABI changed.
+  </Accordion>
+</AccordionGroup>
+
+## Balances and delivery
+
+<AccordionGroup>
+  <Accordion title="Couldn't read destination balance before opening the order">
+    Hexkit snapshots the destination balance before opening so it can measure what
+    the solver delivered. Without that baseline it cannot distinguish delivered
+    tokens from funds you already held, so it refuses to open rather than risk
+    depositing unrelated balances. Retry in a moment.
+  </Accordion>
+  <Accordion title="The delivered amount looks too large">
+    The delivered amount is a balance difference, not an attribution. An unrelated
+    transfer of the same token to the same address during settlement is counted as
+    part of the delivery. Avoid moving the same token to the same address by other
+    means while a route is in flight.
+  </Accordion>
+  <Accordion title="Withdrawal confirmed, but the redeemed balance delta is not visible yet">
+    The redeem succeeded on-chain; a balance read immediately afterwards returned
+    stale data. Your shares are redeemed. Only the routing half is affected — start a
+    fresh route, or keep the underlying on the vault's chain.
+  </Accordion>
+</AccordionGroup>
+
+## Proxy and network errors
+
+| Response | Meaning | Fix |
+|---|---|---|
+| `403 Forbidden` | `PROXY_SECRET` is set | Unset it. The browser client cannot send `x-proxy-secret` — see [Configuration](/configuration) |
+| `403 Origin not allowed` | Origin missing from the allowlist | Add it to `ALLOWED_ORIGINS` |
+| `404 unsupported_intents_path` | Subpath not on the allowlist | Only the six documented subpaths are proxied |
+| `413 body_too_large` | Request body over 16 KiB | Usually a malformed request; check the payload |
+| `429 rate_limited` | Over 120 requests per minute | Wait a minute. Check for a polling loop |
+| `502 Upstream request failed` | `order.li.fi` unreachable or slow | Retry; upstream calls time out at 25 seconds |
+
+## Local development
+
+<AccordionGroup>
+  <Accordion title="API routes 404 in development">
+    Vite proxies the API routes from `vite.config.ts`. Restart `npm run dev` after
+    changing proxy configuration — the config is read at startup.
+  </Accordion>
+  <Accordion title="The build fails but the dev server runs">
+    `npm run build` runs `tsc -b` before Vite. Type errors do not stop the dev
+    server but do stop the build. Run `npm run build` before opening a pull request.
+  </Accordion>
+  <Accordion title="Debugger features are unavailable">
+    The debugger depends on the Rust EDB service behind `/api/edb`. Every other
+    module, including all of LI.FI Earn, runs without it.
+  </Accordion>
+</AccordionGroup>

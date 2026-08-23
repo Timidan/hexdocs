@@ -1,0 +1,98 @@
+---
+title: Withdraw from a vault
+description: Redeem vault shares and route the proceeds to another chain or token.
+---
+
+Withdrawing is two independent halves. First you redeem vault shares for the
+underlying token on the vault's own chain. Then, optionally, you route that
+underlying somewhere else.
+
+The first half always happens. The second is only offered when you ask for a
+different chain or token.
+
+## Amounts are denominated in shares
+
+The withdraw field takes **vault shares**, not underlying tokens. A vault whose
+share has appreciated is worth more than one underlying per share, so the two
+numbers differ.
+
+`WithdrawFlow` reads your share balance on-chain and labels the field
+`Amount (in vault shares)`, with the approximate underlying value shown beneath it.
+The MAX button and the 25/50/75 shortcuts all operate on the share balance.
+
+<Note>
+  If the share-balance read fails, the flow disables submission and shows a retry
+  control rather than guessing. Redeeming with the wrong denomination would withdraw
+  a different amount than the one displayed.
+</Note>
+
+## Redeem on the vault's chain
+
+<Steps>
+  <Step title="Enter a share amount">
+    Validation compares against your on-chain share balance.
+  </Step>
+  <Step title="Confirm the redeem">
+    One transaction. Hexkit waits for the receipt and checks it did not revert.
+  </Step>
+  <Step title="Check the balance delta">
+    The underlying balance is compared before and after to determine what you
+    actually received. That figure sizes any follow-on routing.
+  </Step>
+</Steps>
+
+If the redeem confirms but the balance delta is not yet visible — a stale RPC read
+immediately after the receipt — the flow reports the redeem as complete and does not
+resubmit it. Your shares are already redeemed at that point; only the routing half
+is affected.
+
+## Route the proceeds elsewhere
+
+Choose a different destination chain or token and Hexkit offers one of two routes,
+mirroring the deposit side.
+
+<Tabs>
+  <Tab title="Intent route">
+    `WithdrawIntentRouteStep` quotes an intent order, escrows the redeemed
+    underlying via `open()`, and tracks it on the same four-step timeline —
+    **Opened → Signed → Delivered → Settled**.
+
+    As with deposits, the connected account and the fill window are both rechecked
+    immediately before signing.
+  </Tab>
+  <Tab title="Composer route">
+    `withdrawComposerRoute` bridges the redeemed underlying using a Composer route
+    and polls for settlement for up to 30 minutes, classifying the result as
+    completed, refunded, or partial.
+  </Tab>
+</Tabs>
+
+## Keeping the underlying instead
+
+Routing is optional at every point. If no route is available, or you would rather
+hold the redeemed token on the vault's chain, the flow offers to stop there. The
+redeem has already settled, so nothing is lost by declining to route.
+
+## Recovering a stalled withdrawal
+
+| Situation | What to do |
+|---|---|
+| Redeem confirmed, routing did not start | The shares are redeemed. Start a fresh route, or keep the underlying. |
+| Route quote expired before signing | Request a new quote. Nothing was escrowed. |
+| Order never filled | Refund after `expires`. See [How intent orders work](/concepts/intent-orders). |
+| Bridge reported refunded | The underlying returned to the vault's chain. Retry or keep it. |
+
+<Warning>
+  As with deposits, do not re-quote a route whose `open()` was already broadcast. A
+  fresh quote means a fresh nonce and a second escrow. The retry control is disabled
+  while a broadcast transaction is outstanding.
+</Warning>
+
+## Where this lives
+
+| Concern | Location |
+|---|---|
+| Flow orchestration | `WithdrawFlow.tsx` |
+| Intent route UI | `WithdrawIntentRouteStep.tsx` |
+| Composer route executor | `withdrawComposerRoute.ts` |
+| Quote fetching | `hooks/useWithdrawQuote.ts` |

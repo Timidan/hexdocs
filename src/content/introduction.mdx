@@ -1,45 +1,64 @@
 ---
 title: Introduction
-description: Give readers a clear path from their first question to a result they can verify.
-mode: home
+description: What Hexkit is, what it does, and where to start.
 ---
 
-<Hero
-  title="Build documentation around the reader"
-  subtitle="Start with a useful first result, organize what follows, and publish every format from one reviewable source."
-  primaryLabel="Get started"
-  primaryHref="/quickstart"
-  secondaryLabel="Publish your docs"
-  secondaryHref="/guides/create-a-site"
-/>
+Hexkit is a browser toolkit for working with EVM transactions. It decodes calldata,
+looks up function signatures, builds and simulates transactions, explores verified
+source, inspects contract storage, steps through execution, and deposits into yield
+vaults across chains.
 
-## Build the reader journey
+Everything runs client-side against public RPCs and provider APIs. There is no
+account to create and no server holding your keys.
 
-Begin with the task that brings most readers to your documentation, then make
-the next useful step obvious.
+Try it at [web3-toolkit.vercel.app](https://web3-toolkit.vercel.app), or run it
+locally with the [Quickstart](/quickstart).
 
-<CardGroup cols="2">
-  <Card title="Write your quickstart" icon="party-horn" href="/quickstart">
-    Turn prerequisites, setup, one realistic task, and verification into a short path.
+## Start here
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" href="/quickstart">
+    Run Hexkit locally and complete a cross-chain vault deposit.
   </Card>
-  <Card title="Organize your navigation" icon="grid-round" href="/customization">
-    Group related tasks and references around how people use your product.
+  <Card title="Configuration" href="/configuration">
+    Environment variables, proxy routes, chains, and contracts.
   </Card>
-  <Card title="Document your API" icon="code-simple" href="/api">
-    Replace `openapi.yaml` to publish browsable endpoint docs with a live playground.
+  <Card title="Deposit into a vault" href="/guides/deposits">
+    Same-chain, cross-chain, and intent-based deposits.
   </Card>
-  <Card title="Learn the Thally workflow" icon="wrench" href="/guides/create-a-site">
-    Create, publish, and update sites from the Cloud dashboard, the CLI, or your AI tools.
+  <Card title="Withdraw from a vault" href="/guides/withdrawals">
+    Redeem shares and route the proceeds elsewhere.
   </Card>
 </CardGroup>
 
-## Publish from one source
+## The modules
 
-Thally turns the same reviewed content into HTML, search, agent discovery files,
-Markdown mirrors, and a read-only MCP surface — so people and AI tools read the
-same, current answer. Add only the locales your readers need.
+| Module | What it does |
+|---|---|
+| Decoder | Decodes raw calldata against known or supplied ABIs |
+| Signature database | Resolves 4-byte selectors and event topics |
+| Transaction builder | Composes calls and encodes arguments |
+| Simulation | Runs a transaction and reports asset changes before you sign |
+| Source explorer | Fetches verified source and diffs contract upgrades |
+| Storage viewer | Reads and annotates contract storage slots |
+| Debugger | Steps through execution, backed by the Rust EDB service |
+| LI.FI Earn | Deposits into and withdraws from yield vaults, across chains |
+| AI concierge | Suggests vaults and assembles multi-leg rebalance plans |
 
-<Note type="info" title="Start with the product, not the template">
-  Replace this page with the questions, terminology, and workflows your readers
-  already use. Keep `docs.json` focused on the path between those tasks.
+Every module except the debugger runs without any backend beyond the provider
+proxies described in [Configuration](/configuration).
+
+## How cross-chain works
+
+The Earn module's cross-chain routes use intent orders rather than bridging
+directly: your input is escrowed on the source chain and a solver delivers the
+output on the destination chain, then claims the escrow by proving delivery.
+
+That model explains the deadlines, the four-step timeline, and the refund path you
+will see in the UI. [How intent orders work](/concepts/intent-orders) covers it.
+
+<Note>
+  Hexkit is a tool for inspecting and constructing transactions, not financial
+  advice. Simulate before you sign, and confirm the asset changes match what you
+  expect.
 </Note>

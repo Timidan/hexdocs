@@ -1,47 +1,96 @@
 ---
 title: Quickstart
-description: Guide a new reader through one useful workflow and show them how to verify it.
+description: Run Hexkit locally and complete your first cross-chain vault deposit.
 ---
 
-A strong quickstart produces one meaningful result. Replace the placeholders
-below with the shortest supported path for your product.
+Hexkit is a browser toolkit for working with EVM transactions: a calldata decoder,
+a signature database, a transaction builder, a simulator, a source explorer, a
+storage viewer, a debugger, and the LI.FI Earn module for vault deposits and
+withdrawals.
+
+This page gets the app running and walks one meaningful task end to end — depositing
+into a vault from a different chain.
 
 ## Before you begin
 
-List only the requirements needed for this workflow:
+- Node.js 20 or newer, and npm
+- A browser wallet holding a small amount of a supported token
+- A [LI.FI API key](https://li.fi) if you plan to use the Earn module
 
-- An account or credential, when required
-- A supported runtime, device, browser, or operating system
-- Permission to create or change the resource used in the example
+Nothing else is required to start. The Rust EDB backend powers the debugger only,
+and every workflow on this page runs without it.
 
 <Steps>
-  <Step title="Install the required tool">
-    Give readers one recommended installation command.
-
+  <Step title="Install dependencies">
     ```bash
-    npm install your-package
+    git clone https://github.com/Timidan/hexkit.git
+    cd hexkit
+    npm install
     ```
   </Step>
   <Step title="Add the minimum configuration">
-    Include only the values needed for the first successful run.
+    Copy the example file and fill in the two values the Earn module needs.
 
     ```bash
-    your-cli init
+    cp .env.example .env
     ```
+
+    ```bash
+    LIFI_API_KEY=your-lifi-key
+    VITE_WALLETCONNECT_PROJECT_ID=your-walletconnect-id
+    ```
+
+    Leave every other value at its default for now. [Configuration](/configuration)
+    explains the full set.
   </Step>
-  <Step title="Complete the first task">
-    Use a realistic example that produces an observable result.
-
+  <Step title="Start the dev server">
     ```bash
-    your-cli start
+    npm run dev
     ```
+
+    Vite serves the app on `http://localhost:5173` and proxies the API routes
+    described in [Configuration](/configuration), so no separate backend is needed.
+  </Step>
+  <Step title="Deposit into a vault from another chain">
+    Open `/integrations/lifi-earn`, connect your wallet, and pick a vault on a
+    chain you do **not** currently hold funds on. Choose your funding chain and
+    token in the source picker, enter an amount, and start the deposit.
+
+    Hexkit quotes an intent order, asks you to approve the input token, then asks
+    you to sign one `open()` transaction.
   </Step>
   <Step title="Verify the result">
-    State exactly what the reader should see and how to recover when it does not appear.
+    A four-step timeline appears: **Opened → Signed → Delivered → Settled**.
+    "Opened" confirms your tokens are escrowed on the source chain. When it reaches
+    "Delivered", the vault deposit becomes available on the destination chain.
+
+    If the timeline stalls, [Troubleshooting](/troubleshooting) covers each state
+    and the refund path.
   </Step>
 </Steps>
 
+## Verify the build
+
+Before opening a pull request, confirm the same checks CI runs:
+
+```bash
+npm run build   # tsc -b && vite build
+npm run lint
+```
+
 ## Choose the next task
 
-Link to the guide that naturally follows this result. Avoid ending the reader’s
-journey with a generic list of every feature.
+<CardGroup cols={2}>
+  <Card title="Deposit into a vault" href="/guides/deposits">
+    Same-chain, cross-chain, and intent-based deposit paths.
+  </Card>
+  <Card title="Withdraw from a vault" href="/guides/withdrawals">
+    Redeem shares and route the proceeds to another chain or token.
+  </Card>
+  <Card title="How intent orders work" href="/concepts/intent-orders">
+    Escrow, deadlines, solvers, settlement, and refunds.
+  </Card>
+  <Card title="Configuration" href="/configuration">
+    Every environment variable and proxy route.
+  </Card>
+</CardGroup>

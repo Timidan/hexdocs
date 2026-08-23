@@ -27,11 +27,11 @@
       "groups": [
         {
           "group": "Get started",
-          "pages": ["introduction", "quickstart"]
+          "pages": ["introduction", "quickstart", "configuration"]
         },
         {
-          "group": "Design your docs",
-          "pages": ["components", "customization"]
+          "group": "Concepts",
+          "pages": ["concepts/intent-orders"]
         }
       ]
     },
@@ -39,12 +39,12 @@
       "tab": "Guides",
       "groups": [
         {
-          "group": "Work with Thally",
-          "pages": [
-            "guides/create-a-site",
-            "guides/work-with-the-cli",
-            "guides/connect-ai-tools"
-          ]
+          "group": "LI.FI Earn",
+          "pages": ["guides/deposits", "guides/withdrawals"]
+        },
+        {
+          "group": "Support",
+          "pages": ["troubleshooting"]
         }
       ]
     },
