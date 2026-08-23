@@ -1,0 +1,77 @@
+---
+title: Compare two contracts
+description: Check whether two deployments are byte-for-byte identical.
+---
+
+Contract Diff compares the **runtime bytecode** of two addresses. It answers one
+question well: are these two deployments the same code?
+
+That's the question you have when checking whether a proxy upgrade changed anything,
+whether a contract on one chain matches its counterpart on another, or whether a
+deployment matches a reference you trust.
+
+Open **Source Tools → Contract Diff**.
+
+<Note>
+  This compares bytecode, not source. It will tell you *that* two contracts differ,
+  not *what* changed semantically — there's no opcode analysis, selector diffing, or
+  source comparison.
+</Note>
+
+## Run a comparison
+
+Each side has its own address field **and its own network selector**, so you can
+compare across chains — the same contract on Base and on Arbitrum, for example.
+
+Both sides accept any of the 70 chains in the registry, not just the 36 with
+verification APIs. Diff only needs an RPC connection, since it reads bytecode directly
+from the chain rather than from an explorer.
+
+Enter two addresses and press **Compare**.
+
+## Strip the metadata first
+
+Solidity appends a metadata hash to the end of compiled bytecode. It encodes the
+compiler version and a hash of the source — including comments and file paths. Two
+functionally identical contracts compiled from slightly different source trees will
+have **different metadata and identical logic**.
+
+The **Metadata** toggle handles this:
+
+- **Stripped** (the default) removes the trailing metadata before comparing
+- **Included** compares the raw bytecode as deployed
+
+Start with Stripped. If two contracts are identical with metadata stripped but differ
+with it included, the difference is build provenance, not behaviour.
+
+## Reading the result
+
+A verdict badge reads either **Identical** or **`n` chars differ** — counted in hex
+characters, not bytes. Below it, each side shows its byte count, how many bytes of
+metadata were stripped, and a keccak256 hash of the effective bytecode, which is handy
+for recording in a report.
+
+The two hex panels colour every differing character.
+
+<Warning>
+  The comparison is positional, character by character, with no alignment. If one
+  contract has a single extra byte near the start, **everything after it is marked
+  different** even where the logic is identical. A near-total diff often means an
+  insertion, not a rewrite. Treat "Identical" as reliable and a large diff as a prompt
+  to look closer.
+</Warning>
+
+## When it doesn't work
+
+| Message | Meaning |
+|---|---|
+| `Invalid address` | Not a well-formed address |
+| `Chain {name} not supported` | No RPC configured for that chain |
+| `No runtime bytecode at this address (EOA or self-destructed)` | Nothing to compare |
+| `Failed to fetch bytecode` | The RPC call failed — retry |
+
+## Comparing a proxy upgrade
+
+Diff doesn't resolve implementation addresses for you. To compare an upgrade, get both
+implementation addresses first — [Explorer](/guides/explore-contract-source) shows the
+current one on the proxy's badge row — then paste them into the two sides.

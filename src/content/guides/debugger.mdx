@@ -1,0 +1,152 @@
+---
+title: Step through a transaction
+description: Walk execution line by line with source, stack, and variable state.
+---
+
+The debugger steps through a transaction's execution one snapshot at a time, showing
+the Solidity source line being executed, the call stack, and the state of local and
+storage variables at that moment.
+
+It's a source-level debugger for a transaction that has already happened.
+
+## Open it
+
+Enable **Debug Session** *before* running a simulation or replay, then press the
+**Debug** pill on the results page.
+
+<Warning>
+  Debug has to be requested up front. If you simulated without it, the pill is
+  disabled with the tooltip *"Re-simulate with Debug enabled to access the debugger"* —
+  you'll need to run it again.
+</Warning>
+
+You can also enter from the trace: any row with a snapshot shows a bug icon that opens
+the debugger positioned at that exact step. On a failed transaction, **Debug Revert**
+jumps straight to the failure.
+
+### What the preparation stages mean
+
+Preparing a debug session takes a while, and the pill reports where it is:
+
+| Stage | What's happening |
+|---|---|
+| `Queued...` | Waiting for a worker |
+| `Replaying transaction...` | Re-executing against forked state |
+| `Downloading sources...` | Fetching verified source |
+| `Analyzing source...` | Building the source map |
+| `Instrumenting contracts...` | Adding hooks to capture state |
+| `Collecting snapshots...` | Recording execution points |
+| `Replacing bytecode...` | Swapping in instrumented code |
+| `Capturing hooks...` | Wiring up variable capture |
+| `Starting debug server...` | Bringing up the session |
+| `Ready` | Done |
+
+For a replay with Debug enabled, preparation starts automatically when the page loads.
+
+## The layout
+
+Four panels:
+
+- **Execution** (top left) — the call tree, filterable
+- **Stack Trace** (bottom left) — the current call stack, innermost first
+- **Source Code** (right) — the executing Solidity, with the current line highlighted
+- **State** (bottom right) — variables and machine state at this snapshot
+
+A counter in the header reads `Step n / total`.
+
+## Moving around
+
+| Control | What it does |
+|---|---|
+| **Next** / **Prev** | One snapshot forward or back |
+| **Step Over** | Skip nested calls, stay at this depth |
+| **Step Out** | Run to the end of this call and return to the caller |
+| **Go to First** / **Go to Last** | Jump to either end |
+| **Previous Call** / **Next Call** | Jump between call boundaries |
+
+Only three keyboard shortcuts are actually wired: **←** for previous, **→** for next,
+and **Escape** to close.
+
+<Note>
+  The toolbar shows hints like `F10` and `Shift+F11` next to some buttons. Those keys
+  are **not** bound — use the buttons or the arrow keys.
+</Note>
+
+Clicking any row in the Execution tree or any frame in the Stack Trace jumps straight
+to that point.
+
+## The Execution tree
+
+A filter control offers **Summarized** (the default), **Full Trace**,
+**Functions Only**, **Storage Access**, **Event Logs**, and **External Calls**.
+
+Summarized keeps internal calls, external calls, storage operations, events, and
+reverts — enough to navigate without drowning. Reverts are marked with a warning
+triangle.
+
+## The State panel
+
+A structured dump of the current snapshot: the function, the file and line, the
+contract, caller and target addresses, decoded input and output, gas, and — at hook
+snapshots — **local variables** and **state variables**.
+
+At opcode-level snapshots it shows the top of the EVM stack and any storage access
+instead.
+
+## Evaluate expressions
+
+The **Evaluate** button (marked beta) opens a box where you can run Solidity
+expressions in the scope of the current step:
+
+- local and global variables, including structs and enums
+- state variables, including dynamic arrays and mappings
+- complex expressions
+- function calls
+
+Results render as an expandable tree.
+
+<Note>
+  Evaluate needs a **live** debug session. If the debugger opened in trace mode — the
+  fallback when no live session is available — the button is dimmed and reads
+  *"Limited in trace mode"*. In that mode Hexkit tries to derive values from recorded
+  trace data instead of executing them, which works for some values and not others.
+</Note>
+
+## Breakpoints
+
+Click the gutter beside a line number in the Source panel to toggle a breakpoint.
+
+With at least one breakpoint set, **Continue Backward** appears in the overflow menu
+and runs backwards to the previous hit. There is no forward continue in the UI today.
+
+## Source availability
+
+The Source panel needs verified source. When it isn't available you'll see
+*"Source code not available"* along with the current function, contract, address, and
+opcode — enough to keep your bearings, but no line-by-line stepping.
+
+Verified contracts are also selectable from the file dropdown, so in a transaction
+spanning several contracts you can read through any of them that are verified.
+
+## Two modes, and why it matters
+
+**Live session** — the full experience. Real snapshots from an instrumented run, with
+working expression evaluation.
+
+**Trace mode** — the fallback when no live session can be established. Stepping and
+the execution tree still work, built from the decoded trace, but evaluation is limited
+and some navigation calls will fail. The session ID starting with `trace-` is the tell.
+
+## When it doesn't work
+
+| Message | Meaning |
+|---|---|
+| `No Debug Session Available` | Simulated without Debug enabled — re-run with it on |
+| `Connecting to debug session...` | Still establishing; wait |
+| `Failed to connect` | The session couldn't be reached |
+| `Debug session expired. Please re-run the simulation to debug again.` | Sessions don't live forever |
+| `Expression evaluation is only available when Debug mode is enabled during simulation.` | Trace mode — re-simulate with Debug |
+| `Prep Failed` | Preparation failed; the tooltip carries the reason |
+
+Preparation depends on the debug backend. If the `EDB` indicator in the footer isn't
+`Live`, debugging won't be available at all.

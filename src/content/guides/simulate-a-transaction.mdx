@@ -1,0 +1,108 @@
+---
+title: Simulate a transaction
+description: Run a transaction against real chain state without broadcasting it.
+---
+
+Simulation executes a transaction against a **forked copy of live chain state** and
+shows you exactly what would happen — success or revert, every event, every storage
+write, every token movement — without signing anything or spending gas.
+
+Two ways in: build a call yourself, or replay a transaction that already happened.
+
+Open **Transaction Utils → Simulation (EDB)**.
+
+## Build and simulate a call
+
+Pick a contract and function exactly as you would in
+[Live Interaction](/guides/call-a-contract), then press **Simulate Call** (for reads)
+or **Run Simulation** (for writes). No wallet needed — simulation never touches one.
+
+### Overrides
+
+The **Simulation Overrides** panel controls the conditions the transaction runs under:
+
+| Setting | What it does |
+|---|---|
+| **From (Impersonate)** | Run as any address, without its keys. Leave blank for a neutral default |
+| **Value (ETH)** | ETH sent with the call |
+| **Gas Limit / Gas Price** | Override the defaults, under **Gas Settings** |
+| **Block Number** | Fork at a specific historical block, under **Block Overrides** |
+| **Debug Session** | Enable the step debugger for this run |
+
+Impersonation is the useful one. You can simulate a call as the contract owner, as a
+whale, or as any address at all, and see whether it would succeed.
+
+<Note>
+  **Timestamp override is not supported.** The field is visible but disabled — the
+  simulation engine doesn't accept it yet.
+</Note>
+
+<Warning>
+  Turn on **Debug Session** *before* you simulate if you want to step through the
+  execution afterwards. It can't be added retroactively — you'd have to run the
+  simulation again.
+</Warning>
+
+## Replay a transaction that already happened
+
+Switch the mode toggle to **Transaction Replay** and paste a transaction hash. This
+is the tool for post-mortems: something failed on-chain and you want to know why.
+
+<Steps>
+  <Step title="Paste the hash and pick the network">
+    Hexkit validates it as you type and previews the From, To, Value, and Block once
+    it finds the transaction. The Run button stays disabled until it does — so if
+    it's not lighting up, you're probably on the wrong chain.
+  </Step>
+  <Step title="Optionally set a block tag">
+    Leave blank to fork from latest state. Accepts a block number or a tag like
+    `safe`.
+  </Step>
+  <Step title="Run the replay">
+    Hexkit forks the chain and re-executes the transaction. Results open on their own
+    page.
+  </Step>
+</Steps>
+
+## What you need
+
+**An archive RPC is strongly recommended.** Replaying a historical transaction means
+reading state at an old block, and most free RPC tiers don't keep it. Several of the
+error messages you might hit point straight back at this — configure Alchemy, Infura,
+or a custom archive endpoint under RPC settings.
+
+**Simulation requires the EDB engine.** There's no local fallback: if the service is
+unreachable you'll see `Simulation engine is currently unavailable.` rather than a
+degraded result. The `EDB` indicator in the footer shows `Live`, `Down`, or `Off`.
+
+## Where results are stored
+
+**In your browser, nowhere else** — IndexedDB for the results, OPFS for decoded
+traces.
+
+Two consequences worth internalising:
+
+- Clearing site data deletes your simulation history permanently.
+- The **Share simulation** button copies a URL, but that URL only resolves for
+  someone whose own browser holds that simulation. It is not a public link.
+
+Past runs are listed at **/simulations**, where you can re-open one or clone it to
+re-run with different inputs.
+
+## Reading what comes back
+
+The results page is covered in [Read simulation results](/guides/read-simulation-results).
+In short: a summary strip, then four tabs — Summary (with the execution trace),
+Contracts, Events, and State.
+
+## When it doesn't work
+
+| Message | What to do |
+|---|---|
+| `Simulation engine is currently unavailable.` | The EDB service is down — check the footer indicator |
+| `The RPC node doesn't have historical data for this block.` | You need an archive RPC |
+| `Your RPC provider timed out serving this historical replay.` | Your tier can't serve archival queries; switch providers |
+| `RPC provider rate limit reached.` | Wait, or add your own API key in settings |
+| `Transaction not found on the selected network.` | Wrong chain — check the network selector |
+| `Simulation timed out.` | The transaction is too complex; try simplifying it |
+| `Transaction data is too large to simulate.` | Reduce the calldata size |

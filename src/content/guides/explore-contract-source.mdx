@@ -1,0 +1,87 @@
+---
+title: Read a contract's source
+description: Fetch verified Solidity for any address and see through proxies.
+---
+
+Paste an address and Hexkit fetches its verified source, tells you what kind of
+contract it is, and — if it's a proxy — lets you switch between the proxy and the
+implementation behind it.
+
+Open **Source Tools → Explorer**, or go to
+[/explorer](https://web3-toolkit.vercel.app/explorer). No wallet needed.
+
+## Load a contract
+
+Enter the address, pick the network from the selector inside the field, and press the
+search button. Only chains with a verification API appear in that list — 36 of them,
+because without one there'd be nothing to fetch.
+
+<Note>
+  Changing the network clears whatever is loaded. Pick the chain first.
+</Note>
+
+## What the badges tell you
+
+Once loaded, a row of badges summarises the contract before you read a line of code:
+
+- **Contract name**, or `Unknown` if the metadata has none
+- **Proxy type** — `EIP-1967`, `Transparent`, `Beacon`, `Clone`, `UUPS`, `Safe`, or `DIAMOND` for EIP-2535
+- **Token standard** — `ERC20`, `ERC721`, `ERC1155`, `ERC777`, or `ERC4626`, with the symbol
+- **Verification source** — `SOURCIFY`, `ETHERSCAN`, or `BLOCKSCOUT`
+- **Compiler version** and the number of source files
+- An **Explorer** link out to the block explorer
+
+The verification source is worth a glance. Sourcify means reproducible-build
+verification; Etherscan and Blockscout mean the uploaded source matched the deployed
+bytecode.
+
+## Proxy and implementation
+
+When a contract is a proxy **and** both halves are verified, a narrow rail appears
+beside the code with two options: **Proxy** and **Implementation**. Proxy is selected
+by default. Switching swaps the entire file tree and badge row.
+
+If the rail is missing on a contract you know is a proxy, only one half is verified —
+usually the proxy, with an unverified implementation. That's a real limitation:
+Hexkit shows what's verified and nothing more.
+
+## Reading the code
+
+The viewer is a read-only Monaco editor — the same one VS Code uses — with Solidity
+highlighting, a minimap, and word wrap. The **Source Files** tree on the left appears
+when a contract has more than one file, sorted folders-first with the main contract
+at the top. Clicking a file opens a closable tab.
+
+## Where the source comes from
+
+Hexkit queries **Sourcify**, **Etherscan**, and **Blockscout** in parallel rather than
+in sequence, and takes the first verified result — with a 5-second timeout per source.
+Racing them means you get an answer at the speed of the fastest source rather than
+waiting on a fixed order.
+
+Results are cached for 5 minutes. A contract verified moments ago may need a reload.
+
+## When it doesn't work
+
+| Message | Meaning |
+|---|---|
+| `Please enter a contract address` | The field was empty |
+| `Invalid Ethereum address` | Not a well-formed address |
+| `No contract found at this address.` | No bytecode — an EOA, or a self-destructed contract |
+| `No source code available for this contract.` | Bytecode exists, but no source is verified anywhere |
+
+That last one is the common case for private or freshly-deployed contracts. There's
+no bytecode or disassembly fallback view — but you can still
+[inspect its storage](/guides/inspect-storage), which works without verified source.
+
+## Deep links
+
+All three Source Tools accept the same parameters:
+
+```text
+/explorer?tool=explorer&address=0x…&chainId=1
+/explorer?tool=diff&address=0x…&chainId=1
+/explorer?tool=storage&address=0x…&chainId=1
+```
+
+Handy for sharing a finding, or filing a bug against a specific contract.

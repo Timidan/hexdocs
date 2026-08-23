@@ -1,0 +1,87 @@
+---
+title: See what storage changed
+description: Read the storage slots a transaction would write, decoded to variable names.
+---
+
+The **State** tab lists every storage slot the transaction modified, grouped by
+contract, with before-and-after values decoded to variable names wherever Hexkit can
+recover the contract's storage layout.
+
+This is where you catch side effects that don't emit events.
+
+## Reading a change
+
+Each change is a card:
+
+- **Slot** — the storage slot hex
+- **Variable** — the decoded name, when a layout is available, with a type chip
+- **Before → After** — raw hex, with changed characters highlighted red on the before
+  side and green on the after side
+- **Decoded → Decoded** — the human-readable interpretation
+
+Contracts are grouped into collapsible sections showing the contract name, a token
+badge where relevant, and the number of changes.
+
+<Note>
+  **Writes that don't change anything are hidden.** A storage write that sets a slot
+  to the value it already held is filtered out and not counted. If your change count
+  looks lower than the number of `SSTORE` operations in the trace, that's why.
+</Note>
+
+## Confidence badges
+
+Every decoded variable carries a badge telling you how much to trust the label:
+
+| Badge | Meaning |
+|---|---|
+| **exact** | Matched a concrete entry in the contract's storage layout. Reliable |
+| **derived** | A mapping or array slot resolved by hashing a known key — labels look like `_balances[0x…]`. Reliable when the key was observed |
+| **heuristic** | No layout match. The name and type are a best guess from the raw word |
+
+`heuristic` means "here is a plausible reading of 32 bytes", not "here is what this
+variable is called". Treat those labels as hints.
+
+`???` in the decoded column means the value couldn't be interpreted at all.
+
+## Packed slots
+
+Solidity packs several small variables into one 32-byte slot. When Hexkit detects
+this, the card shows **Packed slot** with a chip counting the fields, then lists each
+field separately with its own before and after values.
+
+This is where character-level diff highlighting earns its keep — you can see that only
+one field in the word actually moved.
+
+## Where layouts come from
+
+Two sources, with the live one winning when both are present:
+
+- **Inline** — from the verified source artifacts collected during simulation. Works
+  without a debug session
+- **Live** — queried from the debug engine when a session is active, which resolves
+  more mappings
+
+Both depend on the contract being verified. **An unverified contract yields raw slots
+and heuristic guesses** — you'll see slot hashes rather than variable names. That's
+not a failure of the tool, it's the absence of a layout to decode against.
+
+<Tip>
+  If the State tab is full of unlabelled slots, check the
+  [Contracts tab](/guides/read-simulation-results). If the contract shows as
+  `Unverified`, no storage decoding is possible for it.
+</Tip>
+
+## Token amounts
+
+For contracts recognised as ERC-20, `uint` fields are scaled by the token's decimals,
+so a balance change reads as a token amount rather than a raw integer.
+
+## When nothing appears
+
+`No storage slots were modified during this simulation` means exactly that — the
+transaction was read-only, reverted before writing, or only wrote values identical to
+what was already stored.
+
+A reverted transaction typically shows no state changes, because the revert rolled
+everything back. Look at the [execution trace](/guides/execution-trace) to see what it
+attempted before failing.

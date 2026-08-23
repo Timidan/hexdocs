@@ -1,0 +1,102 @@
+---
+title: Call a contract
+description: Read state and send transactions against any contract, on any supported chain.
+---
+
+Live Interaction is a working interface for any contract you can name. Paste an
+address, Hexkit fetches the ABI, and you get a form for every function it exposes.
+
+Reading needs no wallet. Writing does.
+
+Open **Transaction Utils → Live Interaction**, or go to
+[/builder?mode=live](https://web3-toolkit.vercel.app/builder?mode=live).
+
+## Load a contract
+
+Pick where the contract comes from:
+
+- **Any Address** — paste an address and press the search button to fetch its ABI
+- **From Project** — choose one you've loaded before, saved automatically in this browser
+
+The network selector sits inside the address field. Hexkit queries Sourcify,
+Etherscan, and Blockscout in parallel and takes the first verified answer.
+
+Two things happen automatically once the ABI loads:
+
+**Proxies are followed.** If the address is a proxy with a verified implementation,
+the implementation's functions are merged in ahead of the proxy's own — so you get the
+functions you actually care about.
+
+**Diamonds are enumerated.** For an EIP-2535 diamond, Hexkit walks every facet and
+merges their functions, showing progress as it goes. Facets that aren't verified get
+an inline box where you can paste their ABI.
+
+### When there's no verified ABI
+
+Press **Upload ABI** and paste the JSON array. Everything downstream works the same.
+
+## Read a function
+
+Functions are split into **Read** and **Write** tabs with counts. Pick a read
+function, fill in any parameters, and press **Call Function**. The result appears
+below, typed.
+
+No wallet required — reads go through the app's RPC connection.
+
+## Send a transaction
+
+Choose a write function and the button changes. Without a wallet it reads
+**Connect Wallet** and stays disabled; connect one and it becomes
+**Send Transaction**.
+
+If your wallet is on a different chain than the one you selected, Hexkit asks it to
+switch and waits up to five seconds for confirmation before continuing. You'll see
+toasts for each stage — switching, pending, then confirmed or reverted.
+
+<Warning>
+  There's no field for sending ETH along with a call. Payable functions can be
+  invoked, but not funded — the transaction goes out with zero value. Use a wallet
+  that lets you set value manually if you need to pay into a function.
+</Warning>
+
+## Raw calldata
+
+Switch the function selector to **Raw input data** and paste calldata directly.
+Hexkit decodes the leading 4-byte selector against the signature database and shows
+you the function it resolved, so you can confirm you're sending what you think.
+
+<Note>
+  Raw mode performs an `eth_call` — it reads, it never sends a transaction. Use a
+  named write function if you want to change state.
+</Note>
+
+## Generated calldata
+
+Whatever you build, the encoded calldata appears in a read-only field with a copy
+button. That's often the real reason to use this tool: construct a call here, verify
+the encoding, then use the bytes elsewhere — in a multisig, a script, or a
+[simulation](/guides/simulate-a-transaction).
+
+## Deep links
+
+```text
+/builder?mode=live&address=0x…&chainId=1
+```
+
+Prefills the address and chain.
+
+## When it doesn't work
+
+| Message | Meaning |
+|---|---|
+| `Please enter a contract address and select a network` | Address or chain missing |
+| `Invalid contract address format` | Not a well-formed address |
+| `Failed to parse contract ABI` | The ABI came back malformed — try Upload ABI |
+| `Network error occurred while fetching contract information` | The lookup failed; retry |
+| `Invalid ABI JSON format. Please check your ABI and try again.` | Your pasted ABI isn't a valid array |
+| `Unknown function (selector not found in database)` | Raw calldata whose selector isn't in any registry |
+| `Network Switch Failed` | Your wallet didn't switch chains — do it manually |
+| `Transaction Reverted` | The transaction mined but reverted |
+
+A revert is worth investigating rather than retrying.
+[Simulate it first](/guides/simulate-a-transaction) to see why.

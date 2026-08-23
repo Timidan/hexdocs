@@ -1,0 +1,134 @@
+---
+title: Identify an unknown function
+description: Turn a 4-byte selector or event topic into a readable signature.
+---
+
+Every contract call starts with a 4-byte selector like `0xa9059cbb`. On its own it
+tells you nothing. The Signature Database turns it back into
+`transfer(address,uint256)`.
+
+Open **Signature Database** in the top navigation, or go straight to
+[/database](https://web3-toolkit.vercel.app/database). No wallet needed.
+
+## Look up a hash you already have
+
+Use the **Lookup** tab when you have the hash and want the name.
+
+<Steps>
+  <Step title="Choose the type">
+    `fn` for a 4-byte function selector, `event` for a 32-byte topic hash, `error`
+    for a revert selector.
+  </Step>
+  <Step title="Paste the hash">
+    The `0x` prefix is optional — Hexkit adds it. You can paste several at once,
+    separated by commas, spaces, or newlines.
+  </Step>
+  <Step title="Read the results">
+    Each hash gets its own card listing every signature known for it.
+  </Step>
+</Steps>
+
+### One selector, several answers
+
+4-byte selectors collide. Different function signatures can hash to the same four
+bytes, so a lookup often returns more than one candidate — and **Hexkit does not
+rank them**. They appear in the order the upstream database returned.
+
+That means you have to judge which one fits. If you're decoding a call to a token
+contract, `transfer(address,uint256)` is plausible; a same-selector match with
+unrelated parameter types is almost certainly the collision, not your function.
+
+Candidates flagged as low quality upstream carry a `Filtered` badge. They're shown
+rather than hidden so you can see the full picture.
+
+<Warning>
+  When a lookup is cached, only the **first** signature is stored. If a selector
+  collides, the cached name is whichever candidate happened to come back first, and
+  that name is what other parts of Hexkit will display later. For contracts you care
+  about, add the real ABI under [your own signatures](/guides/custom-signatures) — those
+  are checked first and are never ambiguous.
+</Warning>
+
+## Search when you only know the name
+
+Use the **Search** tab when you know roughly what the function is called but not its
+selector. Search matches the **name**, not the parameter types.
+
+Wildcards work:
+
+| Query | Matches |
+|---|---|
+| `transfer` | names starting with "transfer" |
+| `transfer*` | names starting with "transfer" |
+| `*transfer` | names ending with "transfer" |
+| `*transfer*` | names containing "transfer" |
+
+Results appear automatically once you've typed two characters, split into
+**Functions** and **Events**. Hover a result to reveal its selector or topic hash
+with a copy button.
+
+A progress log shows which source answered. Hexkit tries OpenChain first and falls
+back to 4byte.directory, so you may see:
+
+```text
+→ Searching "transfer" (filtered)…
+✗ OpenChain empty/failed, falling back to 4byte.directory…
+→ 4byte.directory: functions startswith "transfer"…
+✓ Found 37 results via 4byte.directory
+```
+
+That fallback is normal, not a fault.
+
+<Note>
+  Search results are **not** saved to your cache — only lookups are. If you want a
+  signature available offline later, look it up by hash once.
+</Note>
+
+## Where the data comes from
+
+Two public registries: [OpenChain](https://api.openchain.xyz) and
+[4byte.directory](https://www.4byte.directory). Both require a network connection.
+
+Revert errors are different: Hexkit ships with 25 common error selectors built in —
+`Error(string)`, `Panic(uint256)`, and the OpenZeppelin v5 families like
+`OwnableUnauthorizedAccount` and `ERC20InsufficientBalance`. Those resolve instantly
+and work offline, which is why revert reasons usually have a name even when the
+network doesn't cooperate.
+
+## Utilities
+
+The **Tools** tab has four calculators that all run locally, with no network:
+
+- **Selector** — type a signature, get its 4-byte selector and full keccak256 hash, computed as you type
+- **Decoder** — the full [calldata decoder](/guides/decode-a-transaction)
+- **Encoder** — build calldata from a signature and arguments, or ABI-encode a list of types
+- **Hash** — keccak256, sha256, `abi.encode`, and `encodePacked`
+
+## Deep links
+
+The page reads three URL parameters, which is handy for bookmarks and bug reports:
+
+```text
+/database?tab=lookup&q=0xa9059cbb
+/database?tab=tools&tool=selector
+/database?tab=custom
+```
+
+`tab` accepts `lookup`, `search`, `tools`, `custom`, or `cache`. `tool` accepts
+`selector`, `decoder`, `encoder`, or `hash`. `q` prefills the input but does not
+submit it — except in Search, which runs on its own.
+
+## When it doesn't work
+
+| Message | Meaning |
+|---|---|
+| `Please enter a signature hash` | The input was empty |
+| `Invalid function selector: … (must be 4 bytes / 10 characters with 0x)` | A selector was the wrong length |
+| `Invalid event topic: … (must be 32 bytes / 66 characters with 0x)` | A topic was the wrong length |
+| `No signatures found` | The hash is genuinely unknown to both registries |
+| `OpenChain API error: Network Error` | No connection, or the registry is down |
+| `Search backend error` | Both sources failed — try again shortly |
+
+An unknown selector usually means a private or very new contract. Add its ABI under
+[your own signatures](/guides/custom-signatures) and Hexkit will recognise it
+everywhere.

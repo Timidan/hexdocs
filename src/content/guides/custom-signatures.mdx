@@ -1,0 +1,125 @@
+---
+title: Add your own signatures
+description: Teach Hexkit about your contracts so it names them everywhere.
+---
+
+Public registries only know public contracts. If you're working on something private,
+unreleased, or just obscure, Hexkit will show raw selectors — until you give it your
+ABI.
+
+Everything you add is stored **in your browser only**. Nothing is uploaded.
+
+## Why it's worth doing
+
+Custom signatures are checked **before** any network lookup, and they feed every
+other part of the app. Once Hexkit knows your contract:
+
+- the [decoder](/guides/decode-a-transaction) names your functions and parameters
+- the [simulator](/guides/simulate-a-transaction) names your events instead of showing `Anonymous Event`
+- revert reasons resolve to your custom errors
+- all of it keeps working offline
+
+That's the real payoff: it's the only way these views name anything without a
+network.
+
+## Import a project's artifacts
+
+The fastest route if you have the compiled output of a Hardhat or Foundry project.
+
+<Steps>
+  <Step title="Open Custom → Select Folder">
+    Choose your `artifacts/` directory (Hardhat) or `out/` directory (Foundry). This
+    is a folder picker, not a file picker.
+  </Step>
+  <Step title="Choose which contracts to keep">
+    Hexkit lists what it found with a count of functions and events per contract. Use
+    **All** or **None**, or tick them individually.
+  </Step>
+  <Step title="Close the dialog">
+    The button reads `Import N Contracts`, but it only closes the dialog and stages
+    your selection.
+  </Step>
+  <Step title="Press Add All — this is the step that saves">
+    Back in the Custom tab you'll see `Extracted (N)`. Nothing is stored until you
+    press **Add All**, **Functions**, or **Events**.
+  </Step>
+</Steps>
+
+<Warning>
+  Closing the dialog does **not** save anything. If you skip the final **Add All**,
+  your import is silently lost. This trips up nearly everyone the first time.
+</Warning>
+
+<Note>
+  The file picker says "JSON and ABI files supported", but only `.json` files are
+  actually read. A folder of bare `.abi` files will import nothing.
+</Note>
+
+## Paste an ABI
+
+If you have the ABI but not the build folder, paste the JSON array into the
+**ABI JSON** field and press **Extract**. Hexkit shows a preview of the functions and
+events it found — then, again, press **Add All** to save.
+
+Both artifact shapes work: a full artifact object with an `abi` key, or a bare ABI
+array.
+
+## Add one signature by hand
+
+For a single function, type it into the manual field and press **Add**:
+
+```text
+transfer(address,uint256)
+```
+
+Validation is minimal — the text just has to contain brackets — so a typo in a
+parameter type will be accepted and will simply never match anything. Copy from your
+source rather than typing from memory.
+
+## Manage what you've saved
+
+The **Cache** tab shows everything Hexkit has resolved, split into **Functions**,
+**Events**, and **Errors**, each with its own clear button. Your custom library
+appears separately under **Custom**.
+
+There's no expiry and no size limit — entries stay until you remove them.
+
+<Warning>
+  The **Clear All** button at the bottom of the Cache tab also deletes your **Custom
+  Library**, not just the cached lookups. If you only want to drop stale cache
+  entries, use the per-section trash icons instead.
+</Warning>
+
+Some limits worth knowing before you rely on this:
+
+- **No deduplication.** Importing the same folder twice doubles the entries.
+- **No per-entry delete.** You can clear a whole section, not one signature.
+- **No export.** The library lives in this browser and this profile only. Clearing
+  site data removes it.
+
+## Where it's stored
+
+Browser local storage, under four keys:
+
+| Key | Contents |
+|---|---|
+| `web3toolkit_function_signatures` | cached function lookups |
+| `web3toolkit_event_signatures` | cached event lookups |
+| `web3toolkit_error_signatures` | cached error lookups |
+| `web3toolkit_custom_signatures` | your imported and hand-added signatures |
+
+The app's Storage Manager shows the same data under **Signature Cache** if you want
+to check how much space it's using.
+
+## When it doesn't work
+
+| Message | Meaning |
+|---|---|
+| `Please paste an ABI JSON` | The field was empty |
+| `Failed to parse ABI: ABI must be an array` | The JSON parsed, but wasn't an ABI array |
+| `Failed to parse ABI: …` | The JSON itself is malformed |
+| `Invalid signature format. Expected: functionName(type1,type2,...)` | The manual entry had no brackets |
+| `Failed to process files: …` | The folder couldn't be read |
+
+If an import appears to succeed but nothing shows up afterwards, you almost certainly
+closed the dialog without pressing **Add All**.

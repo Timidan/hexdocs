@@ -1,0 +1,104 @@
+---
+title: Follow the execution trace
+description: Read the call-by-call record of what a transaction actually did.
+---
+
+The execution trace on the **Summary** tab is the full record of a transaction's
+execution: every call, every storage read and write, every event, indented by call
+depth.
+
+It's the tool for answering "what actually happened, and where did it go wrong?".
+
+## Reading a row
+
+Rows are indented by call depth, with guide rails showing nesting. A call row reads
+roughly:
+
+```text
+CALL  21,000  › 1  Router => Pair . swap(amount0Out = 0, amount1Out = 1000000)  -> (true)
+```
+
+That's the opcode, gas used, the depth, who called whom, the decoded function and its
+arguments, and the return value. Value-bearing calls add ` Wei:<amount>`.
+
+Other row types:
+
+- **SLOAD** — `Contract [slot = value]`, a storage read
+- **SSTORE** — `Contract [slot = before → after]`, a storage write
+- **LOG** — `Contract.EventName(arg = value, …)`, an emitted event
+- **Internal function** — `Contract.functionName(args) => (result)`, a call within
+  the same contract
+
+Delegate calls render as `(proxy => implementation)`, so you can see which code is
+running in whose storage context.
+
+Clicking a caret collapses a call and everything under it — the fastest way to skip
+past a subsystem you don't care about.
+
+## Filtering
+
+The toolbar controls what's shown:
+
+| Control | Effect |
+|---|---|
+| **Search** + category | Filter by OpCode, From, To, Function, File, Contract, or State |
+| **Gas** | Show the gas column on opcode rows |
+| **Full Trace** | Show more than just call entries |
+| **Storage** | Show SLOAD and SSTORE rows |
+| **Events** | Show LOG rows |
+| **Slot X-Ref** | Highlight the same storage slot everywhere it appears |
+
+<Note>
+  **Full Trace does not mean every opcode.** With it off, you see only call entries.
+  With it on, you additionally see calls, internal functions, storage operations,
+  events, and returns/reverts. Pure arithmetic and stack operations are never shown —
+  the trace is filtered for meaning, not completeness.
+</Note>
+
+**Slot X-Ref** is worth knowing about. Turn it on and hovering a storage slot
+highlights every other row touching that slot, which makes read-modify-write patterns
+obvious at a glance.
+
+## Jumping to a revert
+
+When a transaction fails, a **Go to Revert** button appears in the toolbar. The error
+banner above the trace already names the contract, function, and source line — the
+trace shows you everything that led there.
+
+## Source code inline
+
+Clicking an opcode row expands the Solidity source around that line, when source is
+available.
+
+That requires two things: the trace must carry source maps, and the contract's source
+must be resolvable. When source maps are missing you'll see:
+
+> No source maps found in this trace, so line-by-line source debugging is not
+> supported.
+
+When the contract simply isn't verified, the expanded row says so and shows the
+address instead.
+
+## Input and Output
+
+Above the trace, a collapsible **Input and Output** panel shows the transaction's
+calldata and return data, each switchable between **Decoded** and **Raw**. Decoding
+uses the contract ABI plus any diamond facets, falling back to a signature lookup.
+
+## When the trace is empty or thin
+
+| Message | Meaning |
+|---|---|
+| `Decoding trace...` | Still processing — large traces take a moment |
+| `No trace entries match the current filters.` | Your filters excluded everything; try enabling Full Trace |
+| `No execution trace data available.` | The engine returned nothing — the transaction touched no contracts, or the backend was unavailable |
+| `rawTrace decoded but produced zero filtered rows.` | Turn on **Full Trace** |
+
+There's also a diagnostic for the case where a trace exists but decoded to nothing,
+which usually means the engine fell back to a simpler execution mode, couldn't fetch
+bytecode, or hit a rate-limited RPC. The fix is nearly always an archive RPC endpoint.
+
+## Going deeper
+
+Any row with a debug snapshot shows a bug icon that opens the
+[step debugger](/guides/debugger) positioned at exactly that point in execution.

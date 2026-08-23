@@ -1,0 +1,87 @@
+---
+title: See what moved
+description: Read the ETH and token movements a transaction would cause.
+---
+
+The most common question about a transaction is the simplest: what leaves my wallet,
+and what arrives? The asset movement panels on the **Summary** tab answer it.
+
+There are two, and they work differently.
+
+## Native Token Change
+
+ETH movements, taken from the execution itself rather than from events — Hexkit walks
+the call tree and records every non-zero value transfer.
+
+| Column | Meaning |
+|---|---|
+| **Address** | The account that gained or lost ETH |
+| **Asset** | Always `ETH` here |
+| **Delta Amount** | Signed, `+` green for incoming, `-` red for outgoing |
+
+Outgoing rows are grouped first, then incoming, with a divider between them.
+
+Because this reads the call tree, it catches ETH moved by internal calls — not just
+top-level transfers.
+
+## Token Movements
+
+ERC-20, ERC-721, and ERC-1155 movements, with tabs for whichever types are present.
+
+<Warning>
+  Token movements are detected **entirely from standard events** — `Transfer`,
+  `TransferSingle`, and `TransferBatch`. A token that moves balances without emitting
+  one of those will not appear here at all. Rebasing tokens, internal accounting, and
+  non-standard implementations are the usual blind spots.
+
+  If a balance changed but nothing shows here, check [State changes](/guides/state-changes)
+  — the raw storage write will still be visible.
+</Warning>
+
+### Two ways to group
+
+The **Group by** control switches between:
+
+**Address** — net balance change per address. This is the view that answers "what did
+this cost me?".
+
+- Columns: Address, Asset, Balance Change, and Value in USD for ERC-20
+- NFTs show a Token ID column instead, and are never priced
+- **Addresses that net to zero are hidden.** An address that received and sent the
+  same amount doesn't appear, because nothing changed for it
+- The transaction sender is tagged `[Sender]` and floated to the top
+
+**Chronologically** — one row per transfer, in execution order. This is the view that
+answers "how did the money actually flow?".
+
+- Columns: From, To, Amount, Asset, Asset Type, Token ID
+- Mints show `Minted` in the From column; burns show `Burned` in the To column
+
+Use Address to check the outcome, Chronological to understand the route — a swap that
+nets you 100 USDC might have passed through four pools to get there.
+
+## Reading the numbers
+
+**Token symbols** are resolved from contract metadata, then by calling `symbol()`
+on-chain, then falling back to a truncated address. A movement showing an address
+instead of a symbol means both lookups failed — usually a non-standard token.
+
+**Decimals** come from the token's metadata, defaulting to 18 for ERC-20 when unknown.
+A number that looks wrong by a factor of a thousand or a billion is usually a token
+with non-standard decimals that Hexkit couldn't read.
+
+**USD values** are approximate: a public price feed with a 10-minute cache, ETH
+pricing for unmapped chains, and no pricing at all for NFTs. Treat them as orientation,
+not accounting.
+
+<Tip>
+  Hovering any address or token symbol highlights every other occurrence on the page,
+  including in the execution trace. It's the quickest way to follow one address
+  through a complex transaction.
+</Tip>
+
+## When nothing appears
+
+The panels only render when there's data. No asset movement section at all means the
+transaction moved no ETH and emitted no standard transfer events — which is entirely
+normal for an approval, a configuration change, or a read-only call.

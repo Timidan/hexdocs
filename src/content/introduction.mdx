@@ -17,11 +17,11 @@ no keys handed over. Connect a wallet only when you want to sign something.
   <Card title="Quickstart" href="/quickstart">
     Decode your first transaction in under a minute.
   </Card>
-  <Card title="Deposit into a vault" href="/guides/deposits">
-    Including from a different chain.
+  <Card title="Simulate a transaction" href="/guides/simulate-a-transaction">
+    See what a transaction does before you sign it.
   </Card>
-  <Card title="Withdraw from a vault" href="/guides/withdrawals">
-    Redeem shares and move the proceeds.
+  <Card title="Decode calldata" href="/guides/decode-a-transaction">
+    Turn a hex blob into a readable function call.
   </Card>
   <Card title="Troubleshooting" href="/troubleshooting">
     What each error means.
@@ -30,17 +30,26 @@ no keys handed over. Connect a wallet only when you want to sign something.
 
 ## What's in it
 
-| Tool | What it's for |
-|---|---|
-| Decoder | Turn raw calldata into readable function calls and parameters |
-| Signature database | Identify unknown 4-byte selectors and event topics |
-| Transaction builder | Compose and encode a call by hand |
-| Simulation | See the asset changes a transaction would cause, before signing |
-| Source explorer | Read verified contract source and diff upgrades |
-| Storage viewer | Inspect and annotate raw contract storage slots |
-| Debugger | Step through execution opcode by opcode |
-| LI.FI Earn | Browse, deposit into, and withdraw from yield vaults |
-| AI concierge | Get vault suggestions and multi-step rebalance plans |
+**Decode and identify** — turn raw calldata into readable calls
+([Decoder](/guides/decode-a-transaction)), identify unknown selectors and event topics
+([Signature Database](/guides/signature-lookup)), and teach it about your own
+contracts ([Custom signatures](/guides/custom-signatures)).
+
+**Simulate** — run a transaction against forked chain state without broadcasting it
+([Simulator](/guides/simulate-a-transaction)), then read
+[what moved](/guides/asset-changes), [what storage changed](/guides/state-changes),
+and the [call-by-call trace](/guides/execution-trace) — or
+[step through it line by line](/guides/debugger).
+
+**Inspect contracts** — read [verified source](/guides/explore-contract-source),
+[compare two deployments](/guides/compare-bytecode), and
+[read live storage](/guides/inspect-storage) decoded to variable names.
+
+**Interact** — [call any contract](/guides/call-a-contract), reading without a wallet
+and writing with one.
+
+**Earn** — browse yield vaults and [deposit](/guides/deposits) or
+[withdraw](/guides/withdrawals), including across chains.
 
 ## A note on cross-chain
 

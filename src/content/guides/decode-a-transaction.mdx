@@ -1,0 +1,121 @@
+---
+title: Decode calldata
+description: Turn a hex blob into a readable function call with named parameters.
+---
+
+Paste raw calldata and the Smart Decoder tells you which function it calls and what
+the arguments are.
+
+Find it under **Signature Database → Tools → Decoder**, or link straight to
+[/database?tab=tools&tool=decoder](https://web3-toolkit.vercel.app/database?tab=tools&tool=decoder).
+
+<Note>
+  This decodes **calldata**, not transaction hashes. To decode a transaction that's
+  already on-chain, use [replay](/guides/simulate-a-transaction) instead — it fetches
+  the transaction and decodes the whole execution.
+</Note>
+
+## Decode a function call
+
+Paste the hex into the **Function Calldata** box and press **Decode**. The `0x` prefix
+is optional, and stray whitespace is cleaned up automatically.
+
+Hexkit works through three sources in order:
+
+1. **Your local signatures** — anything cached from a previous
+   [lookup](/guides/signature-lookup), plus your
+   [custom library](/guides/custom-signatures). Works offline, and takes priority.
+2. **OpenChain** — the public signature registry. Gives you parameter *types* but not
+   parameter *names*.
+3. **Heuristics** — pattern matching against common shapes like
+   `address,uint256`, with a confidence score.
+
+The badge beside the signature tells you which one answered: **Sig**, **Heuristic**,
+**Manual**, **Etherscan**, or **Blockscout**.
+
+<Warning>
+  If every source misses, the decoder shows **nothing at all** — no result and no
+  error message. A blank panel after pressing Decode means "nothing matched", not
+  "something broke". Use **Enrich** to supply an ABI.
+</Warning>
+
+## Get real parameter names
+
+Signature registries store types, not names, so you'll often get `param_0`,
+`param_1` — flagged with a **Generated** chip. To get the real names, give the
+decoder an ABI.
+
+Press **Enrich** and choose:
+
+- **Paste ABI** — drop in the JSON array, or upload a `.json` file
+- **Fetch by Address** — give it a contract address and let Hexkit find the ABI
+
+In **Auto** mode, Fetch by Address sweeps every configured Etherscan and Blockscout
+instance in parallel and asks you to confirm each match it finds — useful when you
+don't know which chain the contract is on. **Single** mode targets one network and
+additionally consults Sourcify.
+
+Proxies are resolved automatically: if the address is a proxy, the implementation's
+ABI is merged in, and the output shows which implementation it came from.
+
+<Note>
+  Pressing **Decode** again clears a loaded ABI. Enrich, then read the result — don't
+  re-decode afterwards.
+</Note>
+
+## Decode a blob with no selector
+
+Some data isn't a function call — the inner payload of a `multicall`, or the output
+of `abi.encode(...)`. That has no selector to look up, so you have to say what's in it.
+
+Switch to **Args Only**, paste the hex, and declare the parameter types in order.
+Each row has a type dropdown and an optional name. Types are chosen from a fixed list
+of 19 (`address`, `uint256`, `bool`, `bytes32`, `string`, the common array forms, and
+so on) — you can't type an arbitrary type, and tuples aren't available in this mode.
+
+## Reading the output
+
+The result panel shows the function name, the full signature, the source badge, and
+the arguments in two views:
+
+- **tree** — one card per parameter with its name and type. Structs expand as
+  collapsible sections; arrays list their items.
+- **json** — the whole thing as a JSON object, with a copy button.
+
+When a heuristic answered, a collapsible **heuristics** row shows the confidence
+percentage and the matched pattern. Turn on **Alternative attempts** in settings to
+see the runner-up interpretations too.
+
+<Note>
+  Decoded addresses are shown as plain hex. They aren't linked, checksummed, or
+  resolved to names or token symbols. To investigate one, copy it into
+  [Explorer](/guides/explore-contract-source).
+</Note>
+
+## Settings
+
+The gear icon opens **Advanced Settings**:
+
+| Setting | Default | Effect |
+|---|---|---|
+| **Explorer Mode** | Auto | Sweep every explorer, or target one network |
+| **Heuristic decoding** | On | Pattern-guess when no ABI or signature is found |
+| **Signature databases** | On | Query OpenChain when no ABI is available |
+| **Alternative attempts** | Off | Show lower-confidence heuristic matches |
+
+These reset when you leave the tab — nothing is remembered between visits.
+
+## When it doesn't work
+
+| Message | Meaning |
+|---|---|
+| `Please enter calldata to decode` | The box was empty |
+| `Invalid calldata format` | Shorter than a 4-byte selector |
+| `No function with selector 0x… found in contract ABI.` | The ABI is real but doesn't contain this function — wrong contract, or a proxy |
+| `Could not retrieve ABI from any block explorer` | The contract isn't verified anywhere Hexkit checked |
+| `Hex string must have even length` | Args-only input is malformed |
+| *(blank result, no message)* | Nothing matched — supply an ABI via Enrich |
+
+The "not found in contract ABI" error lists the functions the ABI *does* contain,
+which usually makes it obvious whether you fetched the wrong contract or are looking
+at a proxy.

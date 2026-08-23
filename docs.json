@@ -50,6 +50,39 @@
       "tab": "Guides",
       "groups": [
         {
+          "group": "Decode & identify",
+          "pages": [
+            "guides/decode-a-transaction",
+            "guides/signature-lookup",
+            "guides/custom-signatures"
+          ]
+        },
+        {
+          "group": "Simulate",
+          "pages": [
+            "guides/simulate-a-transaction",
+            "guides/read-simulation-results",
+            "guides/asset-changes",
+            "guides/state-changes",
+            "guides/execution-trace",
+            "guides/debugger"
+          ]
+        },
+        {
+          "group": "Inspect contracts",
+          "pages": [
+            "guides/explore-contract-source",
+            "guides/compare-bytecode",
+            "guides/inspect-storage"
+          ]
+        },
+        {
+          "group": "Interact",
+          "pages": [
+            "guides/call-a-contract"
+          ]
+        },
+        {
           "group": "LI.FI Earn",
           "pages": [
             "guides/deposits",

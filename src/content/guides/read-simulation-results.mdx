@@ -1,0 +1,116 @@
+---
+title: Read simulation results
+description: Find your way around the results page — summary, contracts, and events.
+---
+
+Every simulation and replay lands on the same results page: a summary strip at the
+top, then four tabs — **Summary**, **Contracts**, **Events**, and **State**.
+
+This page covers the strip and the first three tabs.
+[State changes](/guides/state-changes) and the
+[execution trace](/guides/execution-trace) have their own pages.
+
+## The header
+
+A status pill reads **✓ Success** or **✗ Failed**. Alongside it:
+
+- **Back** — return to the builder
+- **Export test script** — copies the simulation payload as JSON, handy for filing a bug
+- **Share simulation** — copies the page URL
+- **Debug** — opens the [step debugger](/guides/debugger)
+- **Re-Simulate** — reopens the inputs so you can change something and run again
+
+<Warning>
+  **Share simulation** copies a link that only works in *your* browser. Simulations
+  live in local storage, so nobody else can open that URL. To share a finding, use
+  Export test script or a screenshot.
+</Warning>
+
+## The summary strip
+
+Two columns of transaction facts: **Hash**, **Network**, **Status**, **Block**,
+**Timestamp**, **From**, **To** on the left; **Function**, **Value**, **Tx Fee**,
+**Gas Used**, **Gas Price**, **Tx Type**, **Nonce** on the right.
+
+Three things are worth knowing before you trust a number here.
+
+**Hash isn't always a transaction hash.** For a replay it is. For a simulation you
+built yourself, there's no on-chain transaction, so this shows a local simulation ID.
+
+**Function falls back to a bare selector.** If you see `0xa9059cbb` instead of
+`transfer`, that means the ABI wasn't available — not that the function is unknown to
+the world. [Decoding quality tracks verification](/guides/decode-a-transaction).
+
+**Gas Used may be reconstructed.** When the engine doesn't report gas directly,
+Hexkit sums it from the trace and adds an intrinsic-gas estimate. If no gas limit came
+back, the percentage is computed against an assumed 30,000,000.
+
+<Warning>
+  **Tx Fee currently always displays `0 ETH`.** This is a known bug — the field is
+  hardcoded. The USD estimate next to it is calculated correctly, so you may see
+  `0 ETH ~$4.21`. Trust the dollar figure, ignore the ETH one, and compute the real
+  fee from Gas Used × Gas Price if you need it.
+</Warning>
+
+USD values come from a public price feed with a 10-minute cache and are approximate.
+Chains outside the mapped set are priced as if they were ETH.
+
+## Summary tab
+
+The main event. In order:
+
+1. **Warnings**, if the engine returned any
+2. **Error banner**, on failure — the revert message, the offending source line when
+   available, and the last few call-stack frames with file and line numbers
+3. **Input and Output** — the calldata and return data, switchable between decoded
+   and raw
+4. **Asset movements** — see [Asset changes](/guides/asset-changes)
+5. **Execution trace** — see [Execution trace](/guides/execution-trace)
+
+For a failed transaction, the error banner is usually all you need: it names the
+contract, the function, and the source line that reverted.
+
+## Contracts tab
+
+Every contract the transaction touched, with its verification status.
+
+| Column | Meaning |
+|---|---|
+| **Contract** | Name and address. Unverified contracts are tinted amber |
+| **Verification** | `SOURCIFY`, `ETHERSCAN`, `BLOCKSCOUT`, `BYTECODE-DB`, or `Unverified` |
+| **Files** | How many source files the verified artifact contains |
+
+The primary contract sorts first, then verified before unverified.
+
+<Tip>
+  Clicking a row opens that contract in [Explorer](/guides/explore-contract-source) —
+  handy for jumping straight from "what did this touch?" to "what does this code do?".
+  It isn't visually signposted, but the whole row is clickable.
+</Tip>
+
+This tab is the fastest way to understand *why* a trace is poorly decoded. Lots of
+`Unverified` rows means bare selectors and `Anonymous Event` downstream.
+
+## Events tab
+
+Every event emitted, decoded where possible, with filters by event name and by
+emitting contract.
+
+Each event card shows its name, the emitting contract, and its decoded parameters.
+Expand **Show raw data and topics** for the indexed topics and raw data.
+
+Decoding works through the contract's ABI, then any diamond facets, then a built-in
+set of common events (ERC-20/721/1155 `Transfer` and `Approval`, Uniswap `Swap` and
+`Sync`, `OwnershipTransferred`, `Upgraded`), then a topic lookup against the signature
+registry. Anything still unresolved shows as **Anonymous Event** — almost always an
+unverified contract with a non-standard event.
+
+## Simulation history
+
+Past runs are listed at **/simulations** with filters and pagination. Each row offers
+**View** and **Clone & Re-simulate**.
+
+<Note>
+  History lives in your browser's storage. Clearing site data deletes it permanently,
+  and it doesn't sync between devices or browsers.
+</Note>

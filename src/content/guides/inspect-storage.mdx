@@ -1,0 +1,121 @@
+---
+title: Inspect contract storage
+description: Read a live contract's storage slots, decoded to variable names.
+---
+
+Every contract's state lives in numbered 32-byte storage slots. The Storage viewer
+reads them from the live chain and, where it can recover the layout, tells you which
+variable each one holds.
+
+Open **Source Tools → Storage**. No wallet needed.
+
+## Load a contract
+
+Enter an address, pick the chain, and press the grid button. Hexkit then:
+
+1. Reads slots **0–255** directly from the chain
+2. Reads the well-known proxy slots when the contract looks like a proxy
+3. Recovers the **storage layout** so it can name what it found
+4. Probes for dynamic array elements it can infer
+
+You supply only the address — there's no slot range to specify.
+
+## Where layouts come from
+
+The layout is what turns `slot 3` into `_balances`. Hexkit tries, in order:
+
+1. **Compiler layout from Sourcify** — exact, and the best case
+2. **Reconstruction from verified source** — parses the Solidity and rebuilds the
+   layout
+3. **Best-candidate reconstruction** — scores contracts in the source bundle against
+   the slots actually observed
+4. **Diamond facets** — for EIP-2535, merges layouts from the facets
+
+A badge in the toolbar reads **Compiler Layout** or **Reconstructed** so you know
+which you're looking at.
+
+<Warning>
+  **Storage layout comes only from Sourcify.** A contract verified on Etherscan but
+  not Sourcify gets no compiler layout and no source to reconstruct from — you'll see
+  raw slots with heuristic labels. This is the single biggest practical limitation of
+  this tool.
+</Warning>
+
+## Reading the table
+
+Columns are **SLOT**, **VARIABLE**, **TYPE**, **VALUE**. The tree panel on the left
+groups non-zero slots into **Variables**, **Mappings**, **Arrays**, **Proxy**, and
+**Unknown**.
+
+Clicking a row expands an inspector showing how the slot was resolved, its raw value,
+the decoded values, the packing layout if several variables share the word, and a
+state diff when before/after data exists.
+
+Each resolution carries a confidence level:
+
+| Level | Meaning |
+|---|---|
+| **Exact layout match** | Matched the recovered layout directly |
+| **Derived slot** | Computed from layout metadata for a mapping or array entry |
+| **Proxy slot** | A well-known proxy administration slot |
+| **Namespace root** | Resolved from namespaced (diamond) storage |
+| **Heuristic** | No trusted match — the type and value are a guess |
+
+Filter tabs narrow the view to **All**, **Resolved**, **Unknown**, **Changed**, or
+**Non-zero**. The default is **Resolved**, so if a slot you expect is missing, switch
+to **All**.
+
+## Mapping keys
+
+Mappings are the hard part: `mapping(address => uint256)` stores values at hashed
+slots, and **you cannot enumerate them from the chain**. There's no list of keys to
+read.
+
+Hexkit works around this by scanning the **last 20,000 blocks** of event logs and
+transaction data for values that look like keys, then computing where those keys
+would live and reading those slots. Discovered keys are labelled by where they came
+from — `Transfer`, `Approval`, `Deposit`, `Calldata`, and so on.
+
+The toolbar shows progress and a key count, with **Scan**, **Stop**, and **Rescan**
+controls.
+
+<Note>
+  A key that was last touched more than 20,000 blocks ago won't be found. The lookback
+  isn't configurable today. For a key you know about, use the manual probe below.
+</Note>
+
+## Probe a slot yourself
+
+The **Probe Slot** panel in the tree computes slot addresses from the storage rules:
+
+- **Simple Variable** — read slot *n* directly
+- **Mapping** — give the base slot and a key, get `keccak256(key . slot)`
+- **Dynamic Array** — give the base slot and an index
+- **Nested Mapping** — chain several keys
+
+Hexkit shows the computed slot before you read it, so it doubles as a slot calculator.
+This is how you check a specific holder's balance without waiting for a log scan.
+
+## Visualising and exporting
+
+**Slot Graph** opens a heat-map with one cell per slot, shaded by value magnitude,
+with a density summary — a quick way to see how much of a contract's storage is
+actually used.
+
+**CSV** exports everything currently loaded, including slot, label, type, confidence,
+raw and decoded values, and provenance.
+
+## Limitations worth knowing
+
+- Coverage is slots 0–255, plus proxy slots, plus discovered array elements and
+  layout-derived slots. Anything outside that needs a manual probe.
+- Mapping keys are inferred, never enumerated.
+- Unverified contracts still work, but everything is heuristic — raw values with
+  guessed types.
+- Public RPCs rate-limit. The log scanner backs off and retries, but a heavily used
+  contract on a public endpoint will be slow.
+
+## Related
+
+To see how storage changed during a *specific transaction* rather than its current
+state, use [State changes](/guides/state-changes) on a simulation instead.
