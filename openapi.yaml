@@ -1,146 +1,320 @@
 openapi: 3.1.0
 info:
-  title: Sample Posts API
+  title: Hexkit HTTP endpoints
   version: 1.0.0
   description: >-
-    A working sample backed by the public JSONPlaceholder service, so every
-    request in this reference returns a live response you can inspect. Replace
-    this file with the OpenAPI specification for the API your readers use.
+    Hexkit runs in the browser, so anything that needs a credential or a
+    permissive CORS policy goes through a small set of server-side routes. These
+    are those routes.
+
+
+    They are not a public product API — they exist to serve the app itself — but
+    they are documented here because anyone self-hosting Hexkit needs to know
+    what they do, what they refuse, and which environment variables they read.
+
+
+    Every route enforces an origin allowlist, restricts HTTP methods, and returns
+    a JSON `{ "error": "..." }` body on failure.
 servers:
-  - url: https://jsonplaceholder.typicode.com
-    description: Live demo server
+  - url: https://web3-toolkit.vercel.app
+    description: Public deployment
+  - url: http://localhost:5173
+    description: Local development (Vite proxies these routes)
 tags:
-  - name: Posts
-    description: Create and read example posts.
-  - name: Users
-    description: Look up the example authors behind each post.
+  - name: Diagnostics
+    description: Check whether the simulation backend is reachable.
+  - name: Intents
+    description: Proxy to the LI.FI Intents order service.
+  - name: Earn
+    description: Proxies to the LI.FI Earn and Composer APIs.
+  - name: AI
+    description: Proxy to the language model used by the yield concierge.
+  - name: Explorers
+    description: Proxy to Etherscan-family block explorers.
 paths:
-  /posts:
+  /api/edb/health:
     get:
-      operationId: listPosts
-      tags: [Posts]
-      summary: List posts
-      description: Return every post. Real APIs would paginate a list this size.
+      operationId: getEdbHealth
+      tags: [Diagnostics]
+      summary: Check the simulation backend
+      description: >-
+        Reports whether the EDB simulation service is configured and reachable.
+        The `EDB` indicator in the app footer is driven by this endpoint, polled
+        every 12 seconds.
+
+
+        Simulation, execution traces, and the debugger all depend on this
+        service, and there is no fallback — if it is unavailable, those features
+        fail rather than degrade.
+
+
+        `edbServerRunning: false` is normal: debug servers start on demand when a
+        session is requested.
       responses:
-        '200':
-          description: All posts.
+        "200":
+          description: The bridge is configured and answering.
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Post'
-    post:
-      operationId: createPost
-      tags: [Posts]
-      summary: Create a post
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  edbServerRunning:
+                    type: boolean
+                    description: Whether a debug server is currently running.
+                  activeSessions:
+                    type: integer
+                  concurrency:
+                    type: object
+                    properties:
+                      activeSimulations: { type: integer }
+                      queuedRequests: { type: integer }
+                      maxConcurrent: { type: integer }
+                      maxQueue: { type: integer }
+                      queueTimeoutMs: { type: integer }
+                  memory:
+                    type: object
+                    properties:
+                      totalMB: { type: integer }
+                      freeMB: { type: integer }
+                      source: { type: string }
+        "503":
+          description: >-
+            The bridge is not configured. Returned when `EDB_BRIDGE_URL` or
+            `EDB_API_KEY` is missing from the deployment.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: bridge_not_configured
+  /api/lifi-intents/{path}:
+    get:
+      operationId: getIntentsPath
+      tags: [Intents]
+      summary: Read from the intents service
       description: >-
-        Create a post and receive it back with a generated id. The demo server
-        accepts the write and echoes the result without storing it, so you can
-        try requests freely.
+        Forwards to `order.li.fi`. The upstream endpoints are open — this proxy
+        exists for CORS parity and to keep a server-side allowlist, not to add a
+        credential.
+
+
+        Only six subpaths are forwarded. Anything else is refused before a
+        request leaves the server.
+      parameters:
+        - name: path
+          in: path
+          required: true
+          description: The upstream subpath.
+          schema:
+            type: string
+            enum:
+              - quote/request
+              - orders/submit
+              - orders/status
+              - orders
+              - routes
+              - chains/supported
+      responses:
+        "200":
+          description: The upstream response, passed through unchanged.
+        "404":
+          description: The subpath is not on the allowlist.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: unsupported_intents_path
+        "429":
+          description: >-
+            Rate limited. The proxy allows 120 requests per minute per IP,
+            best-effort and per warm instance.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: rate_limited
+        "502":
+          description: The upstream request failed or timed out after 25 seconds.
+    post:
+      operationId: postIntentsPath
+      tags: [Intents]
+      summary: Submit to the intents service
+      description: Same allowlist as the GET form. Request bodies are capped at 16 KiB.
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [quote/request, orders/submit]
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+      responses:
+        "200":
+          description: The upstream response, passed through unchanged.
+        "413":
+          description: The request body exceeded 16 KiB.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: body_too_large
+                maxBytes: 16384
+        "502":
+          description: The upstream request failed.
+  /api/lifi-earn/{path}:
+    get:
+      operationId: getEarnPath
+      tags: [Earn]
+      summary: Read vault data
+      description: >-
+        Forwards to `earn.li.fi` with `LIFI_API_KEY` injected server-side, so the
+        key never reaches the browser. Read-only: only `GET`, `HEAD`, and
+        `OPTIONS` are accepted.
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The upstream response, passed through unchanged.
+        "403":
+          description: The request origin is not on the allowlist.
+        "405":
+          description: Method not allowed.
+        "500":
+          description: >-
+            `LIFI_API_KEY` is not configured on the deployment.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: LIFI_API_KEY not configured
+        "502":
+          description: The upstream request failed.
+  /api/lifi-composer/{path}:
+    get:
+      operationId: getComposerPath
+      tags: [Earn]
+      summary: Read route and quote data
+      description: >-
+        Forwards to `li.quest` with `LIFI_API_KEY` injected server-side. Used for
+        deposit and withdrawal route quotes. Read-only, same contract as
+        `/api/lifi-earn`.
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The upstream response, passed through unchanged.
+        "403":
+          description: The request origin is not on the allowlist.
+        "405":
+          description: Method not allowed.
+        "500":
+          description: "`LIFI_API_KEY` is not configured."
+        "502":
+          description: The upstream request failed.
+  /api/llm-recommend:
+    post:
+      operationId: postLlmRecommend
+      tags: [AI]
+      summary: Ask the language model
+      description: >-
+        Backs the yield concierge's vault recommendations. Forwards to the
+        configured Gemini model with `GEMINI_API_KEY` injected server-side.
+
+
+        Set `VITE_LLM_MODE=off` in the browser build to skip this entirely and
+        use the rules-based fallback instead.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [contents]
               properties:
-                title:
-                  type: string
-                  example: Hello from the API playground
-                body:
-                  type: string
-                  example: This request runs against a live server.
-                userId:
-                  type: integer
-                  example: 1
-              required: [title, body, userId]
+                contents:
+                  type: array
+                  description: Prompt contents, in the provider's message format.
+                  items:
+                    type: object
       responses:
-        '201':
-          description: The created post, including its generated id.
+        "200":
+          description: The model response, passed through unchanged.
+        "400":
+          description: The body was missing or had no `contents` array.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Post'
-  /posts/{id}:
-    get:
-      operationId: getPost
-      tags: [Posts]
-      summary: Get a post
-      description: Return one post by id. Ids 1–100 exist on the demo server.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: The post id.
-          schema:
-            type: integer
-            minimum: 1
-            example: 1
-      responses:
-        '200':
-          description: The requested post.
+                $ref: "#/components/schemas/Error"
+              examples:
+                missing:
+                  value:
+                    error: Missing JSON body
+                malformed:
+                  value:
+                    error: Body must include `contents` array
+        "403":
+          description: The request origin is not on the allowlist.
+        "405":
+          description: Method not allowed. Only `POST` and `OPTIONS` are accepted.
+        "413":
+          description: The request body exceeded 64 KiB.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Post'
-        '404':
-          description: No post has this id.
-  /users/{id}:
-    get:
-      operationId: getUser
-      tags: [Users]
-      summary: Get a user
-      description: Return the profile of an example author. Ids 1–10 exist.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          description: The user id.
-          schema:
-            type: integer
-            minimum: 1
-            example: 1
+                $ref: "#/components/schemas/Error"
+              example:
+                error: Request body too large
+  /api/explorer/etherscan:
+    post:
+      operationId: postExplorerEtherscan
+      tags: [Explorers]
+      summary: Query an Etherscan-family explorer
+      description: >-
+        Fetches contract ABIs and verified source from Etherscan-family
+        explorers, using the deployment's shared key or a personal key supplied
+        by the user in settings.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
       responses:
-        '200':
-          description: The requested user.
+        "200":
+          description: The explorer response, passed through unchanged.
+        "405":
+          description: Method not allowed. Only `POST` is accepted.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
-        '404':
-          description: No user has this id.
+                $ref: "#/components/schemas/Error"
+              example:
+                error: method_not_allowed
 components:
   schemas:
-    Post:
+    Error:
       type: object
       properties:
-        id:
-          type: integer
-          example: 1
-        userId:
-          type: integer
-          example: 1
-        title:
+        error:
           type: string
-          example: Hello from the API playground
-        body:
-          type: string
-          example: This request runs against a live server.
-      required: [id, userId, title, body]
-    User:
-      type: object
-      properties:
-        id:
-          type: integer
-          example: 1
-        name:
-          type: string
-          example: Leanne Graham
-        username:
-          type: string
-          example: Bret
-        email:
-          type: string
-          example: Sincere@april.biz
-      required: [id, name, username, email]
+          description: A short machine-readable reason.

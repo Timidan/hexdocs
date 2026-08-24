@@ -1,15 +1,52 @@
 ---
 title: Changelog
-description: Record product changes that alter how readers use the documented experience.
+description: Notable changes to Hexkit and to this documentation.
 ---
 
-## v0.1.0
+## 2026-08-24 — Documentation covering the whole toolkit
 
-The first published version of this documentation.
+The docs now cover every tool in the app rather than the Earn integration alone.
 
-- A task-focused introduction and quickstart
-- Browsable API documentation generated from `openapi.yaml`
-- Agent-readable discovery files and a read-only MCP endpoint
+**New guides for the simulator.** [Running a simulation](/guides/simulate-a-transaction),
+[reading the results](/guides/read-simulation-results),
+[what moved](/guides/asset-changes), [what storage changed](/guides/state-changes),
+the [execution trace](/guides/execution-trace), and the
+[step debugger](/guides/debugger).
 
-Replace this entry with changes your readers need to understand. Lead with the
-impact, then link to the guide or reference that explains the new behavior.
+**New guides for inspection and decoding.**
+[Decode calldata](/guides/decode-a-transaction),
+[identify unknown functions](/guides/signature-lookup),
+[add your own signatures](/guides/custom-signatures),
+[read contract source](/guides/explore-contract-source),
+[compare two contracts](/guides/compare-bytecode),
+[inspect storage](/guides/inspect-storage), and
+[call a contract](/guides/call-a-contract).
+
+**Known limits are now documented alongside the features.** Storage layout recovery
+needs Sourcify specifically; mapping keys are inferred from a 20,000-block log scan
+rather than enumerated; token movements are detected only from standard `Transfer`
+events; "Full Trace" is filtered for meaning rather than complete; and simulation has
+no fallback if the backend is unavailable.
+
+**API reference replaced.** The reference now documents Hexkit's actual server-side
+routes — [what they are](/api/introduction) and
+[how they authorise requests](/api/authentication) — instead of the sample
+specification the site shipped with.
+
+### Known issues
+
+- **Tx Fee always reads `0 ETH`** on the simulation summary. The USD estimate beside
+  it is calculated correctly, so you may see `0 ETH ~$4.21`. Compute the real fee from
+  Gas Used × Gas Price.
+- **Importing contract artifacts requires a second step.** The `Import N Contracts`
+  button closes the dialog but does not save; you must then press **Add All**.
+- **`Clear All` in the signature Cache tab also deletes your Custom Library.**
+- **Live Interaction cannot send ETH with a call.** Payable functions can be invoked
+  but not funded.
+- Some debugger keyboard hints (`F10`, `Shift+F11`) are displayed but not bound. Use
+  the toolbar buttons, or the arrow keys.
+
+## 2026-08-23 — Documentation site published
+
+First published version, covering the LI.FI Earn integration and the concepts behind
+cross-chain vault routes.

@@ -1,53 +1,92 @@
 ---
 title: Authentication
-description: How to authenticate requests, and how to document your own scheme.
+navTitle: Authentication
+description: How these routes decide what to allow — and why there's no API key for you.
 ---
 
-The Sample Posts API is intentionally public: no key, token, or header is
-required, so every request in this reference works the moment you press
-**Send**.
+There is no API key to request and no token to send. These routes serve the Hexkit
+app, and they authorise requests by **where they came from**, not by who sent them.
 
-Your API almost certainly is not public. This page shows how to document the
-two most common schemes so readers always know exactly what to put in the
-request — replace it with the scheme your API uses.
+If you're [self-hosting](/self-hosting), this page is the part that decides whether
+your deployment works.
 
-## Documenting a bearer token
+## Origin allowlisting
 
-Show the header exactly as readers must send it, then where the token comes
-from:
+Every route checks the `Origin` header:
+
+- An origin on the allowlist is served
+- An origin **not** on the allowlist gets `403 Origin not allowed`
+- A request with **no** `Origin` header is served
+
+That last rule is deliberate. Browsers omit `Origin` on many same-origin requests,
+particularly `GET`s, so rejecting header-less requests would break the app against
+itself.
+
+Set the allowlist with a comma-separated list:
 
 ```bash
-curl --request GET \
-  --url 'https://api.yourproduct.com/v1/posts' \
-  --header 'Authorization: Bearer YOUR_API_TOKEN'
+ALLOWED_ORIGINS=https://yourdomain.com,https://preview.yourdomain.com
 ```
 
-## Documenting an API key
+`localhost` origins are always accepted, so local development works without
+configuration.
 
-```bash
-curl --request GET \
-  --url 'https://api.yourproduct.com/v1/posts' \
-  --header 'X-Api-Key: YOUR_API_KEY'
-```
+<Note>
+  Because header-less requests pass, these routes are reachable by anything that
+  isn't a browser. The upstreams they front are either keyless or rate-limited, so
+  the exposure is your own serverless quota rather than your credentials. The intents
+  proxy adds a per-IP rate limit of 120 requests per minute as friction — it is not
+  authentication.
+</Note>
 
-## Declare the scheme in OpenAPI
+## Server-side credentials
 
-Add a security scheme to `openapi.yaml` and the generated endpoint pages will
-show the requirement — and the playground will prompt for the credential —
-automatically:
+Keys live in the deployment environment and are attached by the route handler.
 
-```yaml
-components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-security:
-  - bearerAuth: []
-```
+| Variable | Used by | Notes |
+|---|---|---|
+| `LIFI_API_KEY` | `/api/lifi-earn`, `/api/lifi-composer` | Without it, both return `500 LIFI_API_KEY not configured` |
+| `GEMINI_API_KEY` | `/api/llm-recommend` | Without it, the concierge falls back to rules-based suggestions |
+| `EDB_BRIDGE_URL` + `EDB_API_KEY` | `/api/edb/*` | **Both** required, or every call returns `503 bridge_not_configured` |
+| `ETHERSCAN_API_KEY` | `/api/explorer/etherscan` | Users may supply a personal key instead |
 
-<Tip>
-  Tell readers where to create and revoke credentials, how long they live, and
-  what happens when one expires. Those three answers prevent most
-  authentication support tickets.
-</Tip>
+Nothing prefixed `VITE_` is a secret — those are compiled into the browser bundle and
+are readable by anyone.
+
+## The PROXY_SECRET trap
+
+`PROXY_SECRET` switches the routes from origin checks to requiring an
+`x-proxy-secret` header.
+
+<Warning>
+  **Do not set this on a browser-facing deployment.** The web client never sends that
+  header — `proxyHeaders()` in the app deliberately returns an empty object — so
+  setting `PROXY_SECRET` makes every proxied call return `403`. Vault data, quotes,
+  order status, and AI recommendations all stop working at once.
+
+  It is only useful if you are calling these routes from your own server and can set
+  the header yourself.
+</Warning>
+
+This is worth checking first if a fresh deployment returns `403` everywhere.
+
+## CORS
+
+Successful responses echo the allowed origin back in
+`Access-Control-Allow-Origin`. Preflight `OPTIONS` requests are answered with the
+permitted methods and headers.
+
+The EDB proxy keeps its own allowlist, extendable with
+`EDB_CORS_ALLOWED_ORIGINS`, because it is often pointed at a bridge running
+somewhere other than the app.
+
+## Diagnosing a failure
+
+| Response | Cause | Fix |
+|---|---|---|
+| `403 Forbidden` | `PROXY_SECRET` is set | Unset it |
+| `403 Origin not allowed` | Origin missing from the allowlist | Add it to `ALLOWED_ORIGINS` |
+| `500 LIFI_API_KEY not configured` | No LI.FI key | Set `LIFI_API_KEY` |
+| `503 bridge_not_configured` | EDB URL or key missing | Set both `EDB_BRIDGE_URL` and `EDB_API_KEY` |
+| `405 Method not allowed` | Wrong verb | The data proxies are read-only |
+| `429 rate_limited` | Over 120 requests/minute | Wait, or check for a polling loop |

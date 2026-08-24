@@ -1,49 +1,76 @@
 ---
 title: API overview
 navTitle: Overview
-description: What this API reference covers and how to try every request live.
+description: The server-side routes Hexkit uses, and what they refuse.
 ---
 
-This reference documents the Sample Posts API — a small, working API backed by
-the public [JSONPlaceholder](https://jsonplaceholder.typicode.com) service.
-Every endpoint page has a **Send** button that runs the real request from your
-browser, so you can inspect live responses before writing a line of code.
+Hexkit runs entirely in your browser. Anything that needs a credential, or that a
+browser can't call directly because of CORS, goes through a small set of server-side
+routes. This reference documents those routes.
 
-## Base URL
+<Note>
+  This is not a public product API. These endpoints exist to serve the app, and they
+  only accept requests from allowed origins. They're documented because anyone
+  [self-hosting Hexkit](/self-hosting) needs to know what they do and how they fail.
+</Note>
 
-All requests use the same base URL:
+## Why they exist
 
-```text
-https://jsonplaceholder.typicode.com
+Two reasons, and every route is one or the other.
+
+**Holding credentials.** `LIFI_API_KEY` and `GEMINI_API_KEY` are injected by the
+server, per request. They never reach the browser bundle, so they can't be extracted
+from it.
+
+**CORS parity.** Some upstream services don't send permissive CORS headers, so a
+browser can't call them directly. `/api/lifi-intents` is the clearest case — the
+upstream endpoints are completely open and need no key, but the browser still can't
+reach them without a proxy.
+
+## The routes
+
+| Route | Purpose | Credential |
+|---|---|---|
+| `/api/edb/health` | Is the simulation backend up? | — |
+| `/api/lifi-intents/{path}` | Cross-chain intent orders | None needed |
+| `/api/lifi-earn/{path}` | Vault data | `LIFI_API_KEY` |
+| `/api/lifi-composer/{path}` | Route and quote data | `LIFI_API_KEY` |
+| `/api/llm-recommend` | Vault recommendations | `GEMINI_API_KEY` |
+| `/api/explorer/etherscan` | Contract ABIs and source | Shared or personal key |
+
+Sourcify and Blockscout are reached through plain URL rewrites rather than handlers,
+because they need neither a key nor special handling.
+
+## What they all enforce
+
+Every route applies the same three checks before doing any work:
+
+**Origin allowlist.** Requests carrying an `Origin` header that isn't allowed get
+`403`. Configure it with `ALLOWED_ORIGINS`.
+
+**Method restriction.** The read-only proxies accept only `GET`, `HEAD`, and
+`OPTIONS`. Anything else gets `405`.
+
+**Body limits.** 16 KiB on the intents proxy, 64 KiB on the LLM proxy, 50 MB on the
+EDB proxy — which carries simulation artifacts. Over the limit gets `413`.
+
+Failures return a JSON body of the shape `{ "error": "..." }`.
+
+## Checking whether things are up
+
+The one route worth calling by hand:
+
+```bash
+curl https://web3-toolkit.vercel.app/api/edb/health
 ```
 
-## Try your first request
+A `200` with `"status": "ok"` means the simulation backend is reachable, which is what
+the `EDB` indicator in the app footer reports. A `503` with `bridge_not_configured`
+means the deployment has no backend wired up — in which case simulation, execution
+traces, and the debugger are all unavailable, because none of them has a fallback.
 
-<Steps>
-  <Step title="Open an endpoint">
-    Pick **Get a post** from the Posts group in the sidebar.
-  </Step>
-  <Step title="Send it">
-    Keep the default id of `1` and press **Send**. The response panel shows a
-    real `200` with the post body.
-  </Step>
-  <Step title="Change the input">
-    Try an id above `100` to see the API's `404` behavior.
-  </Step>
-</Steps>
-
-Writes are safe to experiment with: the demo server accepts `POST` requests
-and echoes the created resource back with a generated id without storing it.
-
-## Make this reference yours
-
-This sample exists so the reference has something real to show. To document
-your own API, replace `openapi.yaml` at the repository root with your
-specification — the endpoint pages, navigation, and playground regenerate from
-it on the next publish.
-
-<Note type="info" title="Keep the overview pages">
-  Readers orient faster when a reference opens with what the API does, how to
-  authenticate, and one runnable request. Rewrite this page and
-  [Authentication](/api/authentication) for your API instead of deleting them.
-</Note>
+<Warning>
+  Do not set `PROXY_SECRET` on a browser-facing deployment. When it's set, these
+  routes require an `x-proxy-secret` header that the web client does not send, so
+  every call returns `403`. See [Self-hosting](/self-hosting).
+</Warning>
