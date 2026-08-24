@@ -1,0 +1,165 @@
+---
+title: Get vault recommendations
+description: Find idle funds and rank vaults, by scanning your wallet or by describing a goal.
+---
+
+The Yield Concierge answers two different questions. **Idle sweep** starts from what
+you hold: "what should I do with this?" **Intent** starts from what you want: "find me
+a safe USDC vault above 5% on Arbitrum".
+
+Both live under **Put idle assets to work** on the **My Positions** tab of LI.FI Earn.
+Neither needs a connected wallet to *look* — paste any address and it will scan that
+one instead.
+
+## Idle sweep
+
+Hexkit scans your balances across every chain that has vaults, finds tokens sitting
+idle, and suggests where each one could go.
+
+<Steps>
+  <Step title="Let it scan">
+    A status line reads `12 of 14 chains · 8 idle · 0 selected` as it works. Tokens
+    worth under $1.50 are collapsed into a "low-value tokens hidden" group — click to
+    expand.
+  </Step>
+  <Step title="Select what to deploy">
+    Tick the assets you want to use. Each has a **0–100% slider**, so you can deploy
+    part of a balance and keep the rest.
+  </Step>
+  <Step title="Choose how to route">
+    **Per-asset** sends each token to its own vault, possibly on different chains.
+    **Consolidate** brings everything into one vault, bridging as needed.
+  </Step>
+  <Step title="Review the picks">
+    Each asset gets up to four suggestions — **Best**, **Safest**, and two
+    alternatives. Click a pill to change the destination.
+  </Step>
+</Steps>
+
+The queue builds and starts automatically once you have selections with a destination.
+There's no separate Run button — but nothing is signed until you approve it in your
+wallet.
+
+<Note>
+  If the scan fails, there's no rescan button. Reload the page.
+</Note>
+
+## Intent
+
+Describe what you want in plain English:
+
+> Put my USDC into the safest vault above 5% APY on Arbitrum
+
+Press **Get recommendations** and Hexkit turns that into structured filters, shown as
+removable **Parsed filters** chips — the objective, token, chain, APY floor, TVL
+floor, and so on. Remove a chip to loosen that constraint; the shortlist re-ranks
+without re-reading your sentence.
+
+Below the list you'll see how the universe was narrowed, like
+`Picked from 24 intent-filtered vault(s) (of 812 total).` When nothing matches, it
+tells you exactly what was dropped — wrong token, below APY floor, excluded protocol.
+
+If your token has no matching vault, Hexkit relaxes that one filter and says so:
+*"No PEPE vaults matched your criteria. Showing top vaults reachable via swap."*
+
+## How vaults are ranked
+
+Filtering happens locally first. Vaults are dropped for non-transactional status,
+chain or token mismatch, APY outside your bounds, TVL below your floor, and protocol
+exclusions. Two risk filters also apply:
+
+- **High risk** — APY above 250% *and* TVL under $2M
+- **Caution** — TVL under $250K, reward-heavy APY, a 1-day spike over 3× the 30-day
+  average, or a declining trend
+
+Both are hidden by default with a toggle to reveal them.
+
+The survivors go to the model, which picks **Best** and **Safest** (never the same
+vault) and writes a one-line rationale for each. It's told to prefer sustainable base
+APY over emissions, to weigh TVL and protocol maturity, and to reject anything whose
+entry cost takes more than six months to earn back.
+
+<Note>
+  The model only ever chooses from vaults Hexkit already shortlisted. It cannot invent
+  one — a hallucinated name resolves to nothing rather than into your queue.
+</Note>
+
+## AI or rules
+
+Every recommendation card carries a badge: **AI** or **Rules**.
+
+**Rules** means the ranking came from a local heuristic — highest APY above a $10M TVL
+floor for Best, highest TVL for Safest. Its rationales are formulaic and numeric
+(`Highest APY (7.42%) among 14 eligible vaults.`), which is the giveaway.
+
+Fallback happens when the model is disabled, when the call fails, when the response
+doesn't parse, or when only one candidate survived filtering.
+
+<Warning>
+  Rules mode has a real limitation in per-asset intent mode: the ranking is computed
+  once and reused, so **every asset can get the same vault**. The differentiation
+  between tokens happens inside the model prompt. If you see one vault suggested for
+  everything, check whether the badge says `Rules`.
+</Warning>
+
+## Turning the AI off
+
+Set `VITE_LLM_MODE=off` in your own deployment and every recommendation becomes
+rules-based. Scanning, filtering, the flow diagram, and execution all still work.
+
+<Warning>
+  In `off` mode, **Intent silently ignores what you typed.** There's no error and no
+  notice — the parsed filters simply show "(no specific criteria — ranking entire
+  vault universe)" and you get a generic list. If your filters vanish, check this
+  setting first.
+</Warning>
+
+Self-hosters: the model runs on the operator's key, so there's no per-user quota. Your
+only costs are on-chain — gas, swap fees, bridge fees.
+
+<Note>
+  Recommendations for a **pasted** address are limited to 3 model calls per hour, and
+  one call is used per selected asset. Hitting it shows the generic *"AI recommender
+  unavailable"* alert with a Retry button that won't help until the hour is up. Your
+  own connected wallet isn't rate-limited.
+</Note>
+
+## Executing a plan
+
+The queue runs **one leg at a time**, each rendered as a full deposit flow. You
+approve every transaction in your wallet — a same-chain leg needs an approve and a
+deposit; a cross-chain leg adds a bridge step.
+
+**Next Step** advances, and stays disabled until the current leg finishes. When
+everything is done it becomes **Reset**.
+
+### When a leg fails
+
+A failed leg offers **Skip & continue**. What that means depends on whether funds are
+recoverable.
+
+If they aren't at risk, skipping just moves on. If they might be — escrowed, or
+delivered but not yet deposited — you'll get a hint like *"Funds were delivered on the
+destination chain. Retry the deposit step to finish."* and an amber
+**Skip & continue (funds may be stuck)** button.
+
+<Warning>
+  Skipping a recoverable leg **does not recover the funds**, and it removes the retry
+  and refund controls from that step. Your remaining route is the vault drawer,
+  manually. Read the hint before skipping — retrying is usually the right move.
+</Warning>
+
+Legs that can't run at all are listed as **Skipped** with a reason rather than dropped
+silently — a non-EVM source chain, a native token where an ERC-20 is required, no
+route for the pair, or an amount below the dust threshold.
+
+<Note>
+  Changing a destination while a queue is part-finished rebuilds and restarts it from
+  step one. Set destinations before starting.
+</Note>
+
+## Related
+
+- [Deposit into a vault](/guides/deposits) — the deposit flow each leg runs
+- [How cross-chain works](/concepts/intent-orders) — escrow, deadlines, refunds
+- [Self-hosting](/self-hosting) — `VITE_LLM_MODE` and the model proxy
