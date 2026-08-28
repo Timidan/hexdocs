@@ -47,12 +47,11 @@ the world. [Decoding quality tracks verification](/guides/decode-a-transaction).
 Hexkit sums it from the trace and adds an intrinsic-gas estimate. If no gas limit came
 back, the percentage is computed against an assumed 30,000,000.
 
-<Warning>
-  **Tx Fee currently always displays `0 ETH`.** This is a known bug — the field is
-  hardcoded. The USD estimate next to it is calculated correctly, so you may see
-  `0 ETH ~$4.21`. Trust the dollar figure, ignore the ETH one, and compute the real
-  fee from Gas Used × Gas Price if you need it.
-</Warning>
+<Note>
+  **Tx Fee** was hardcoded to `0 ETH` in earlier builds, which is why older
+  screenshots show `0 ETH` beside a non-zero USD estimate. Since 2026-08-27 the fee
+  is computed from Gas Used × the effective gas price.
+</Note>
 
 USD values come from a public price feed with a 10-minute cache and are approximate.
 Chains outside the mapped set are priced as if they were ETH.
