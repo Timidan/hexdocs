@@ -78,10 +78,17 @@ Every contract the transaction touched, with its verification status.
 | Column | Meaning |
 |---|---|
 | **Contract** | Name and address. Unverified contracts are tinted amber |
-| **Verification** | `SOURCIFY`, `ETHERSCAN`, `BLOCKSCOUT`, `BYTECODE-DB`, or `Unverified` |
+| **Verification** | `SOURCIFY`, `ETHERSCAN`, `BLOCKSCOUT`, or `Unverified` |
 | **Files** | How many source files the verified artifact contains |
 
 The primary contract sorts first, then verified before unverified.
+
+<Note>
+  `BYTECODE-DB` doesn't appear here. Hexkit can resolve an ABI from a bytecode
+  database, but that only happens when you load a contract directly — see
+  [Call a contract](/guides/call-a-contract). Simulation results resolve verification
+  from Sourcify, Etherscan, or Blockscout only.
+</Note>
 
 <Tip>
   Clicking a row opens that contract in [Explorer](/guides/explore-contract-source) —
