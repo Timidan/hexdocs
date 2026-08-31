@@ -3,6 +3,20 @@ title: Changelog
 description: Notable changes to Hexkit and to this documentation.
 ---
 
+## 2026-08-31 — Three more known issues fixed
+
+**Clear All no longer deletes your custom signatures.** In the Signature Database
+Cache tab, `Clear All` removed the hand-authored custom library along with the three
+lookup caches. Custom signatures are authored content, not cache, and now survive a
+cache clear.
+
+**Debugger keyboard shortcuts work.** The toolbar advertised `F10`, `Shift+F11`,
+`F11`, `Home` and `End`, but only Escape and the arrow keys were bound. Each key now
+performs the action its hint names.
+
+**Importing contract artifacts saves on the first try.** The import dialog's primary
+button closed without persisting anything; a second, unlabelled step was required.
+
 ## 2026-08-27 — Simulation Tx Fee is now computed
 
 The results summary previously displayed `0 ETH` for **Tx Fee** on every
@@ -46,13 +60,13 @@ specification the site shipped with.
 
 - ~~Tx Fee always reads `0 ETH` on the simulation summary~~ — **fixed 2026-08-27**;
   the fee is now computed from gas used and the effective gas price.
-- **Importing contract artifacts requires a second step.** The `Import N Contracts`
-  button closes the dialog but does not save; you must then press **Add All**.
-- **`Clear All` in the signature Cache tab also deletes your Custom Library.**
+- ~~Importing contract artifacts requires a second step~~ — **fixed 2026-08-31**.
+- ~~`Clear All` in the signature Cache tab also deletes your Custom Library~~ —
+  **fixed 2026-08-31**; it now clears only the lookup caches.
 - **Live Interaction cannot send ETH with a call.** Payable functions can be invoked
   but not funded.
-- Some debugger keyboard hints (`F10`, `Shift+F11`) are displayed but not bound. Use
-  the toolbar buttons, or the arrow keys.
+- ~~Some debugger keyboard hints (`F10`, `Shift+F11`) are displayed but not bound~~ —
+  **fixed 2026-08-31**; every advertised shortcut now works.
 
 ## 2026-08-23 — Documentation site published
 
