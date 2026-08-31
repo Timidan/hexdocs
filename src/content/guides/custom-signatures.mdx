@@ -35,24 +35,16 @@ The fastest route if you have the compiled output of a Hardhat or Foundry projec
     Hexkit lists what it found with a count of functions and events per contract. Use
     **All** or **None**, or tick them individually.
   </Step>
-  <Step title="Close the dialog">
-    The button reads `Import N Contracts`, but it only closes the dialog and stages
-    your selection.
-  </Step>
-  <Step title="Press Add All — this is the step that saves">
-    Back in the Custom tab you'll see `Extracted (N)`. Nothing is stored until you
-    press **Add All**, **Functions**, or **Events**.
+  <Step title="Press Import — it saves">
+    `Import N Contracts` adds the selected signatures to your library and closes the
+    dialog. Before 2026-08-31 this button only closed the dialog and a second step
+    was needed; it now saves on the first try.
   </Step>
 </Steps>
 
-<Warning>
-  Closing the dialog does **not** save anything. If you skip the final **Add All**,
-  your import is silently lost. This trips up nearly everyone the first time.
-</Warning>
-
 <Note>
-  The file picker says "JSON and ABI files supported", but only `.json` files are
-  actually read. A folder of bare `.abi` files will import nothing.
+  The picker reads `.json` artifact files. A folder of bare `.abi` files imports
+  nothing.
 </Note>
 
 ## Paste an ABI
@@ -84,11 +76,10 @@ appears separately under **Custom**.
 
 There's no expiry and no size limit — entries stay until you remove them.
 
-<Warning>
-  The **Clear All** button at the bottom of the Cache tab also deletes your **Custom
-  Library**, not just the cached lookups. If you only want to drop stale cache
-  entries, use the per-section trash icons instead.
-</Warning>
+<Note>
+  **Clear All** clears the function, event and error lookup caches. Since 2026-08-31 it
+  leaves your Custom Library alone — custom signatures are authored content, not cache.
+</Note>
 
 Some limits worth knowing before you rely on this:
 
