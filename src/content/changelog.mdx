@@ -3,6 +3,17 @@ title: Changelog
 description: Notable changes to Hexkit and to this documentation.
 ---
 
+## 2026-08-31 — Payable functions can be funded
+
+**Live Interaction can send ETH with a call.** Payable functions could be invoked but
+never funded — every transaction went out with zero value, and there was no field to
+enter an amount outside simulation mode. Selecting a payable write now shows a
+**Value (ETH)** panel, and the amount is sent with the transaction.
+
+Amounts are read exactly as simulation reads them: a plain decimal is ETH, a
+`0x`-prefixed value is wei. See
+[Paying into a payable function](/guides/call-a-contract#paying-into-a-payable-function).
+
 ## 2026-08-31 — Three more known issues fixed
 
 **Clear All no longer deletes your custom signatures.** In the Signature Database
@@ -63,8 +74,8 @@ specification the site shipped with.
 - ~~Importing contract artifacts requires a second step~~ — **fixed 2026-08-31**.
 - ~~`Clear All` in the signature Cache tab also deletes your Custom Library~~ —
   **fixed 2026-08-31**; it now clears only the lookup caches.
-- **Live Interaction cannot send ETH with a call.** Payable functions can be invoked
-  but not funded.
+- ~~Live Interaction cannot send ETH with a call~~ — **fixed 2026-08-31**; payable
+  functions now show a Value field and the amount is sent with the transaction.
 - ~~Some debugger keyboard hints (`F10`, `Shift+F11`) are displayed but not bound~~ —
   **fixed 2026-08-31**; every advertised shortcut now works.
 
