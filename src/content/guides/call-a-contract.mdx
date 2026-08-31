@@ -53,11 +53,28 @@ If your wallet is on a different chain than the one you selected, Hexkit asks it
 switch and waits up to five seconds for confirmation before continuing. You'll see
 toasts for each stage — switching, pending, then confirmed or reverted.
 
-<Warning>
-  There's no field for sending ETH along with a call. Payable functions can be
-  invoked, but not funded — the transaction goes out with zero value. Use a wallet
-  that lets you set value manually if you need to pay into a function.
-</Warning>
+### Paying into a payable function
+
+Select a **payable** write function and a **Value (ETH)** panel appears beside the
+inputs. Whatever you enter is sent with the transaction.
+
+The amount is read the same way simulation reads it: a plain decimal is ETH, and a
+`0x`-prefixed value is wei.
+
+| You type | Amount sent |
+|---|---|
+| `0.1` | 0.1 ETH |
+| `0` or blank | nothing |
+| `0xde0b6b3a7640000` | 1 ETH, as wei |
+
+An amount that can't be parsed stops the send with an error rather than quietly going
+out as zero.
+
+<Note>
+  The panel only appears for payable functions — non-payable writes always send zero,
+  which is what they should do. Before 2026-08-31 there was no field at all, so payable
+  calls could be invoked but never funded.
+</Note>
 
 ## Raw calldata
 
