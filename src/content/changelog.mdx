@@ -3,6 +3,14 @@ title: Changelog
 description: Notable changes to Hexkit and to this documentation.
 ---
 
+## 2026-09-08 — Duplicate custom signatures are skipped on save
+
+Importing the same artifacts folder twice, or manually adding a signature that was
+already in your library, used to double every entry — and with no per-entry delete
+the only cleanup was clearing the whole library. `saveCustomSignature` now silently
+skips any signature that already exists in the library, so re-imports and repeated
+manual adds are harmless.
+
 ## 2026-09-08 — Simulation Value hint corrected
 
 The Value override's help text claimed amounts could be given "in wei or decimal
