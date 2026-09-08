@@ -3,6 +3,14 @@ title: Changelog
 description: Notable changes to Hexkit and to this documentation.
 ---
 
+## 2026-09-08 — Simulation Value hint corrected
+
+The Value override's help text claimed amounts could be given "in wei or decimal
+ETH", but the parser reads any non-`0x` input as decimal ETH — a plain-integer wei
+amount was silently treated as ETH. The hint now states the real convention, the
+same one [live payable calls](/guides/call-a-contract#paying-into-a-payable-function)
+use: decimal ETH, or `0x`-prefixed hex wei.
+
 ## 2026-08-31 — Payable functions can be funded
 
 **Live Interaction can send ETH with a call.** Payable functions could be invoked but
