@@ -99,9 +99,19 @@ jobs:
         if: steps.plan.outputs.full == 'true'
         run: npm ci --ignore-scripts
 
+      # CI skips dependency lifecycle scripts, so generate the modules that a
+      # normal postinstall would provide before type-checking.
+      - name: Generate runtime sources
+        if: steps.plan.outputs.full == 'true'
+        run: npm run runtime-sources:build
+
       - name: Test
         if: steps.plan.outputs.full == 'true'
         run: npm test
+
+      - name: Install optional Cloudflare tooling
+        if: steps.plan.outputs.full == 'true'
+        run: npm run setup:cloudflare
 
       - name: Build managed runtime and content assets
         if: steps.plan.outputs.full == 'true'
