@@ -1,97 +1,50 @@
 ---
 title: Quickstart
-description: Open Hexkit and complete your first task — no install, no account.
+description: Decode a real Vara mainnet message in HexKit and read its call, reply and events.
+lastUpdated: 2026-10-27
+lastVerified: 2026-10-27
+sources:
+  - product/hexkit
+verifiedCommit: 2dde1487b3577e8d3726021c0524c0c5bd5a2671
 ---
 
-Hexkit runs in your browser at
-[web3-toolkit.vercel.app](https://web3-toolkit.vercel.app). There is nothing to
-install and no account to create. Open it and you can start decoding calldata
-immediately; connect a wallet only when you want to sign something.
+import { ReadOnlyNote } from '/snippets/read-only-note.mdx'
 
-## Your first minute
+You'll open a message sent on Vara mainnet and find out exactly what it asked a program to do, and what happened.
+
+<ReadOnlyNote />
 
 <Steps>
-  <Step title="Open the app">
-    Go to [web3-toolkit.vercel.app](https://web3-toolkit.vercel.app). The command
-    bar at the top accepts an address, a transaction hash, a 4-byte selector, or a
-    page name — press <kbd>⌘K</kbd> (or <kbd>Ctrl</kbd>+<kbd>K</kbd>) to focus it
-    from anywhere.
+  <Step title="Open Message Inspector">
+    Go to [hexkit.app/vara/transactions?tool=message](https://hexkit.app/vara/transactions?tool=message).
+
+    From anywhere else in HexKit, select **Vara** in the chain switcher at the top left, then **Programs & messages → Message Inspector**.
   </Step>
-  <Step title="Choose your RPC, or skip it">
-    On first load Hexkit asks whether to use your own RPC provider or the built-in
-    public endpoints. Public defaults work fine for reading and decoding; they are
-    shared, so they can be rate-limited under load. You can change this later.
+  <Step title="Inspect a message">
+    Enter `36589852-1` and select **Inspect**.
+
+    `36589852-1` means extrinsic 1 in block 36,589,852. The field also accepts a Subscan or Gear IDEA link, or a message ID.
   </Step>
-  <Step title="Decode a transaction">
-    Paste any mainnet transaction hash into the command bar. Hexkit resolves the
-    function selector against its signature database and shows the decoded
-    parameters with their types and values — no ABI required, and no wallet
-    connection.
+  <Step title="Read the summary">
+    After a few seconds the summary shows the call `gear.sendMessage` marked **Success**, sent to the **Polybaskets** program (`0xa749cc…2cba`).
+
+    The **IDL from Gear IDEA** badge means HexKit found the program's Sails interface and used it to decode the message.
+
+    <Frame>
+      <img src="/images/vara-message-inspector.png" alt="Message Inspector showing message 36589852-1 decoded as BasketMarket.FinalizeSettlement with basket_id 1633" />
+    </Frame>
   </Step>
-  <Step title="Simulate before you sign">
-    From a decoded transaction, run a simulation to see the asset changes it would
-    produce — which tokens move, in what direction, and by how much — before it
-    ever reaches your wallet.
+  <Step title="Read what the message did">
+    - **Payload** shows the call: `BasketMarket.FinalizeSettlement` with `basket_id: 1633`.
+    - **Events** shows what the program emitted in the same block: `BasketMarket.SettlementFinalized` for basket `1633`, with a `payout_per_share` of `10000`.
+    - The **Diagnosis** tab confirms the message was included, processed, and answered with a successful reply code.
   </Step>
 </Steps>
 
-<Tip>
-  Everything above works without connecting a wallet. Connect one only for actions
-  that need a signature, like depositing into a vault.
-</Tip>
+You can now say what this message did without reading any hex: it asked Polybaskets to finalize the settlement for basket 1633, and the program did.
 
-## Browse yield vaults
+To keep a copy, open **Investigation** and choose **Save in this browser** or **Export as a file**. An exported file opens again later with **Open an investigation file…**, even offline.
 
-Open **Integrations → LI.FI Earn** to browse vaults across 20+ protocols. Filter by
-chain, protocol, or tag, and sort by APY, TVL, or name.
+## Next step
 
-![The LI.FI Earn vaults grid, showing APY, TVL, chain and protocol for each vault](/images/earn-vaults.png)
-
-You do not need to connect a wallet to look. Paste any address into the
-**Paste address…** field and Hexkit will show that address's positions — useful for
-inspecting a wallet you do not control.
-
-### Read the risk signals first
-
-Vaults carrying risk signals are marked **Caution**. Opening one shows exactly which
-signals fired before you go any further.
-
-![A vault risk warning listing Micro TVL and Reward-heavy signals, with Go back and Continue anyway](/images/earn-risk-warning.png)
-
-`Micro TVL` means very little capital is deposited. `Reward-heavy` means most of the
-headline APY comes from incentive rewards rather than the vault's base yield, so it
-can fall sharply when the incentives end. Neither is automatically disqualifying —
-they are things to check rather than warnings to dismiss.
-
-### Look past the headline APY
-
-Expanding a vault shows its APY over 1, 7, and 30 days alongside a trend line, its
-TVL, and the underlying contract address.
-
-![An expanded vault card showing 1d, 7d and 30d APY history with a trend line](/images/earn-vault-card.png)
-
-A vault advertising 138% today but 105% across the last 30 days is telling you
-something the headline number is not.
-
-## Deposit into a vault
-
-Connect your wallet, pick a vault, and enter an amount. If your funds are on a
-different chain from the vault, Hexkit handles the cross-chain path for you — see
-[Deposit into a vault](/guides/deposits) for the full walkthrough.
-
-## Where to go next
-
-<CardGroup cols={2}>
-  <Card title="Deposit into a vault" href="/guides/deposits">
-    Same-chain and cross-chain deposits, step by step.
-  </Card>
-  <Card title="Withdraw from a vault" href="/guides/withdrawals">
-    Redeem shares and move the proceeds where you want them.
-  </Card>
-  <Card title="How cross-chain works" href="/concepts/intent-orders">
-    What the four-step timeline is actually tracking.
-  </Card>
-  <Card title="Troubleshooting" href="/troubleshooting">
-    What each error means and how to recover.
-  </Card>
-</CardGroup>
+The message succeeded when it was sent. Would it succeed if someone sent it again today? [Replay it at two blocks](/guides/replay-a-message) to find out.

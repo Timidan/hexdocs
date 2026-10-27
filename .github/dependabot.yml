@@ -1,0 +1,8 @@
+version: 2
+updates:
+  # Bumps the pinned Hexkit commit. CI's `thally check --drift` then flags
+  # every page whose `sources` include product/hexkit for re-verification.
+  - package-ecosystem: gitsubmodule
+    directory: /
+    schedule:
+      interval: weekly

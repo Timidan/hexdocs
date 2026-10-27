@@ -1,69 +1,47 @@
 ---
 title: Introduction
-description: What Hexkit is and what you can do with it.
+description: HexKit is a browser toolkit for decoding, simulating and debugging Vara program messages and EVM transactions.
+lastUpdated: 2026-10-27
+lastVerified: 2026-10-27
+sources:
+  - product/hexkit
+verifiedCommit: 2dde1487b3577e8d3726021c0524c0c5bd5a2671
 ---
 
-Hexkit is a browser toolkit for working with EVM transactions. Paste a transaction
-hash and see what it actually does. Simulate a transaction before you sign it. Read
-contract storage, diff a contract upgrade, or step through execution. And put idle
-funds into yield vaults across 20+ protocols, including from a chain you don't hold
-them on.
+HexKit shows you what a smart-contract call did, or what it would do, in plain names instead of hex. It runs in your browser at [hexkit.app](https://hexkit.app). There is nothing to install and no account to create.
 
-It runs entirely in your browser at
-[web3-toolkit.vercel.app](https://web3-toolkit.vercel.app) — no install, no account,
-no keys handed over. Connect a wallet only when you want to sign something.
+These docs cover HexKit's Vara tools, added in October 2026.
+
+## Who it's for
+
+- Developers building [Sails](https://wiki.vara.network/docs/build/sails) programs on Vara who need to know why a message succeeded, failed, or would fail if sent again.
+- Auditors and support engineers reading someone else's messages without the program's source.
+- Anyone who needs a decoded record of a message that they can save and share.
+
+## What it does on Vara
+
+| Tool | Use it to |
+| --- | --- |
+| Message Inspector | Decode a sent message: its call, reply, events and dispatch status. HexKit fetches the program's interface (IDL) for you. |
+| Message Simulation | Calculate a message's reply at a chosen block without signing anything. |
+| Program Interaction | Load a program by ID and query it through forms built from its Sails IDL. |
+| Scenario Tests | Run a program's WASM against a local test runtime and assert replies across several messages. |
+| IDL Comparison | Compare two versions of a Sails interface and check saved payloads against both. |
+| Event Explorer | Decode a program's Sails events over a block range and export them. |
+| Vara.eth Settlement | Match Mirror requests to their replies by message ID and check Ethereum finality. |
+
+HexKit's EVM tools sit behind the **EVM** switch at the top left of the app. These docs don't cover them yet.
+
+## What you need
+
+- A desktop browser.
+- A Polkadot-compatible wallet extension, but only to send a message. Reading, decoding and dry runs work without one.
 
 <CardGroup cols={2}>
   <Card title="Quickstart" href="/quickstart">
-    Decode your first transaction in under a minute.
+    Decode a real mainnet message.
   </Card>
-  <Card title="Simulate a transaction" href="/guides/simulate-a-transaction">
-    See what a transaction does before you sign it.
-  </Card>
-  <Card title="Decode calldata" href="/guides/decode-a-transaction">
-    Turn a hex blob into a readable function call.
-  </Card>
-  <Card title="Troubleshooting" href="/troubleshooting">
-    What each error means.
+  <Card title="Replay a message at two blocks" href="/guides/replay-a-message">
+    Find out whether a message would still succeed today, and why.
   </Card>
 </CardGroup>
-
-## What's in it
-
-**Decode and identify** — turn raw calldata into readable calls
-([Decoder](/guides/decode-a-transaction)), identify unknown selectors and event topics
-([Signature Database](/guides/signature-lookup)), and teach it about your own
-contracts ([Custom signatures](/guides/custom-signatures)).
-
-**Simulate** — run a transaction against forked chain state without broadcasting it
-([Simulator](/guides/simulate-a-transaction)), then read
-[what moved](/guides/asset-changes), [what storage changed](/guides/state-changes),
-and the [call-by-call trace](/guides/execution-trace) — or
-[step through it line by line](/guides/debugger).
-
-**Inspect contracts** — read [verified source](/guides/explore-contract-source),
-[compare two deployments](/guides/compare-bytecode), and
-[read live storage](/guides/inspect-storage) decoded to variable names.
-
-**Interact** — [call any contract](/guides/call-a-contract), reading without a wallet
-and writing with one.
-
-**Earn** — browse yield vaults and [deposit](/guides/deposits) or
-[withdraw](/guides/withdrawals), including across chains.
-
-## A note on cross-chain
-
-When you deposit into a vault on a chain you don't hold funds on, Hexkit doesn't
-bridge your tokens the usual way. It escrows them on your chain and lets a third
-party deliver the tokens on the destination chain, then claims the escrow by proving
-they did.
-
-In practice that means one signature instead of several, and a four-step timeline
-showing where your money is. It also means there are deadlines, and a way to get your
-funds back if nobody completes the job. [How cross-chain works](/concepts/intent-orders)
-explains it properly.
-
-<Note>
-  Hexkit helps you inspect and construct transactions. It is not financial advice.
-  Simulate before you sign, and check that the asset changes match what you expect.
-</Note>

@@ -91,43 +91,37 @@ export interface SiteConfig {
 
 const brandPresets: Record<BrandPresetKey, BrandConfig> = {
   // A warm neutral foundation with restrained green and violet accents.
+  // HexKit's app palette: neutral greys with its blue accent.
   primary: {
     light: {
-      background: '#FCFCF7',
-      // The docs handoff uses the page surface for cards; hierarchy comes from
-      // hairline borders rather than white tiles or elevation.
-      card: '#FCFCF7',
-      foreground: '#1A2018',
-      muted: '#EFEFE9',
-      mutedForeground: '#747B72',
-      border: '#E5E6E1',
-      accent: '#007852',
+      background: '#FFFFFF',
+      card: '#FFFFFF',
+      foreground: '#0A0A0A',
+      muted: '#F5F5F5',
+      mutedForeground: '#737373',
+      border: '#E5E5E5',
+      accent: '#0066CD',
       accentForeground: '#FFFFFF',
-      accent2: '#755FBB',
-      accent2Foreground: '#0B0A13',
-      input: '#E5E6E1',
-      sidebar: '#F7F7F2',
-      ring: '#397059',
-      // Olive-family tint (the leaf's own green) for the active sidebar item
-      sidebarActiveBg: '68 40% 88% / 0.65',
-      sidebarActiveText: '#454A22',
+      input: '#E5E5E5',
+      sidebar: '#FAFAFA',
+      ring: '#0066CD',
+      sidebarActiveBg: '210 100% 40% / 0.10',
+      sidebarActiveText: '#0066CD',
     },
     dark: {
-      background: '#040704',
-      card: '#060906',
-      foreground: '#EFEFE7',
-      muted: '#0E130F',
-      mutedForeground: '#929C90',
-      border: '#1B1E1A',
-      accent: '#BAE43E',
-      accentForeground: '#101911',
-      accent2: '#AC9CF0',
-      accent2Foreground: '#0B0A13',
-      input: '#29302A',
-      sidebar: '#060906',
-      ring: '#BAE43E',
-      sidebarActiveBg: '132 15% 6%',
-      sidebarActiveText: '#BAE43E',
+      background: '#0A0A0A',
+      card: '#101010',
+      foreground: '#FAFAFA',
+      muted: '#171717',
+      mutedForeground: '#929292',
+      border: '#262626',
+      accent: '#0F92F7',
+      accentForeground: '#0A0A0A',
+      input: '#262626',
+      sidebar: '#0A0A0A',
+      ring: '#0F92F7',
+      sidebarActiveBg: '206 94% 51% / 0.12',
+      sidebarActiveText: '#0F92F7',
     },
   },
   // Alternate preset — violet. Still a first-class, ready-to-use accent.
@@ -176,13 +170,15 @@ const templateSiteConfig: SiteConfig = {
 // Managed by Thally Cloud onboarding.
 export const siteConfig: SiteConfig = {
   ...templateSiteConfig,
-  name: "hexdocs",
-  description: "hexdocs documentation",
+  name: "HexKit",
+  description: "Decode, simulate and debug Vara program messages in your browser.",
   repoUrl: "https://github.com/Timidan/hexdocs",
   links: [
     { label: "Get started", href: "/quickstart" },
-    { label: "Support", href: "https://github.com/Timidan/hexdocs/issues/new" },
-    { label: "GitHub", href: "https://github.com/Timidan/hexdocs" },
-    { label: "Changelog", href: "/changelog" },
+    { label: "Open HexKit", href: "https://hexkit.app" },
+    { label: "Report a docs issue", href: "https://github.com/Timidan/hexdocs/issues/new" },
   ],
+  ogImage: {
+    logoText: "HexKit Docs",
+  },
 };

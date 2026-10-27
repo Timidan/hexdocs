@@ -15,15 +15,79 @@
       }
     ]
   },
-  "navbar": {
-    "primary": {
-      "label": "Get started",
-      "href": "/quickstart"
-    }
+  "favicon": {
+    "light": "/brand/hexkit-mark-light.svg",
+    "dark": "/brand/hexkit-mark-dark.svg"
   },
+  "banner": {
+    "content": "These docs now cover HexKit's Vara tools. The earlier EVM guides are kept at the [synchack-final tag](https://github.com/Timidan/hexdocs/tree/synchack-final).",
+    "dismissible": true
+  },
+  "navbar": {
+    "logo": {
+      "light": "/brand/hexkit-mark-light.svg",
+      "dark": "/brand/hexkit-mark-dark.svg",
+      "showTitle": true,
+      "rightText": "Docs"
+    },
+    "links": [
+      { "label": "GitHub", "href": "https://github.com/Timidan/hexkit", "type": "github" }
+    ],
+    "primary": { "label": "Open HexKit", "href": "https://hexkit.app" }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/Timidan/hexkit"
+    },
+    "links": [
+      {
+        "heading": "Docs",
+        "items": [
+          { "label": "Quickstart", "href": "/quickstart" },
+          { "label": "Replay a message", "href": "/guides/replay-a-message" }
+        ]
+      },
+      {
+        "heading": "Vara",
+        "items": [
+          { "label": "Gear IDEA", "href": "https://idea.gear-tech.io" },
+          { "label": "vara-wallet CLI", "href": "https://github.com/gear-foundation/vara-wallet" }
+        ]
+      }
+    ],
+    "copyright": "Copyright {year} HexKit"
+  },
+  "feedback": {
+    "thumbsRating": true
+  },
+  "redirects": [
+    { "source": "/changelog", "destination": "/", "permanent": false },
+    { "source": "/self-hosting", "destination": "/", "permanent": false },
+    { "source": "/troubleshooting", "destination": "/", "permanent": false },
+    { "source": "/concepts/intent-orders", "destination": "/", "permanent": false },
+    { "source": "/api/introduction", "destination": "/", "permanent": false },
+    { "source": "/api/authentication", "destination": "/", "permanent": false },
+    { "source": "/api/default/:path*", "destination": "/", "permanent": false },
+    { "source": "/guides/ai-concierge", "destination": "/", "permanent": false },
+    { "source": "/guides/asset-changes", "destination": "/", "permanent": false },
+    { "source": "/guides/call-a-contract", "destination": "/", "permanent": false },
+    { "source": "/guides/compare-bytecode", "destination": "/", "permanent": false },
+    { "source": "/guides/custom-signatures", "destination": "/", "permanent": false },
+    { "source": "/guides/debugger", "destination": "/", "permanent": false },
+    { "source": "/guides/decode-a-transaction", "destination": "/", "permanent": false },
+    { "source": "/guides/deposits", "destination": "/", "permanent": false },
+    { "source": "/guides/execution-trace", "destination": "/", "permanent": false },
+    { "source": "/guides/explore-contract-source", "destination": "/", "permanent": false },
+    { "source": "/guides/inspect-storage", "destination": "/", "permanent": false },
+    { "source": "/guides/read-simulation-results", "destination": "/", "permanent": false },
+    { "source": "/guides/signature-lookup", "destination": "/", "permanent": false },
+    { "source": "/guides/simulate-a-transaction", "destination": "/", "permanent": false },
+    { "source": "/guides/state-changes", "destination": "/", "permanent": false },
+    { "source": "/guides/withdrawals", "destination": "/", "permanent": false }
+  ],
   "tabs": [
     {
-      "tab": "Get started",
+      "tab": "Docs",
       "groups": [
         {
           "group": "Get started",
@@ -33,89 +97,12 @@
           ]
         },
         {
-          "group": "Concepts",
+          "group": "Guides",
           "pages": [
-            "concepts/intent-orders"
-          ]
-        },
-        {
-          "group": "Run your own",
-          "pages": [
-            "self-hosting"
+            "guides/replay-a-message"
           ]
         }
       ]
-    },
-    {
-      "tab": "Guides",
-      "groups": [
-        {
-          "group": "Decode & identify",
-          "pages": [
-            "guides/decode-a-transaction",
-            "guides/signature-lookup",
-            "guides/custom-signatures"
-          ]
-        },
-        {
-          "group": "Simulate",
-          "pages": [
-            "guides/simulate-a-transaction",
-            "guides/read-simulation-results",
-            "guides/asset-changes",
-            "guides/state-changes",
-            "guides/execution-trace",
-            "guides/debugger"
-          ]
-        },
-        {
-          "group": "Inspect contracts",
-          "pages": [
-            "guides/explore-contract-source",
-            "guides/compare-bytecode",
-            "guides/inspect-storage"
-          ]
-        },
-        {
-          "group": "Interact",
-          "pages": [
-            "guides/call-a-contract"
-          ]
-        },
-        {
-          "group": "LI.FI Earn",
-          "pages": [
-            "guides/deposits",
-            "guides/withdrawals",
-            "guides/ai-concierge"
-          ]
-        },
-        {
-          "group": "Support",
-          "pages": [
-            "troubleshooting"
-          ]
-        }
-      ]
-    },
-    {
-      "tab": "API Reference",
-      "groups": [
-        {
-          "group": "Overview",
-          "pages": [
-            "api/introduction",
-            "api/authentication"
-          ]
-        }
-      ],
-      "api": {
-        "source": "openapi.yaml"
-      }
-    },
-    {
-      "tab": "Changelog",
-      "href": "/changelog"
     }
   ]
 }

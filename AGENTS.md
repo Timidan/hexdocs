@@ -60,4 +60,14 @@ upgrade an existing site or move a production release pointer.
 
 ## Product context
 
-<!-- Add canonical terminology, audience details, and content boundaries here. -->
+- The product is HexKit (https://hexkit.app), source at `Timidan/hexkit`. These
+  docs cover its Vara tools only; the EVM tools are out of scope for now.
+- Write "HexKit", "Message Inspector", "dry run", "Sails IDL" and "VARA" (the
+  token) exactly as here. Name UI controls in bold as the app labels them.
+- Every example must run against Vara mainnet today. Re-run it in the app
+  before changing a page that contains it.
+- `product/hexkit` is a submodule pinned to the HexKit commit the pages were
+  verified against. When `thally check --drift` flags a page, re-check it in the
+  app, then set `lastVerified` to today and `verifiedCommit` to
+  `git rev-parse HEAD`. Merge with a merge commit, not a squash, so that commit
+  stays in `main`'s history.
