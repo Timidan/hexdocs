@@ -1,6 +1,6 @@
 ---
 title: Introduction
-description: Hexkit is a browser toolkit for decoding, simulating and debugging Vara program messages and EVM transactions.
+description: HexKit is a browser toolkit for decoding, simulating and debugging Vara program messages and EVM transactions.
 lastUpdated: 2026-10-27
 lastVerified: 2026-10-27
 sources:
@@ -8,9 +8,9 @@ sources:
 verifiedCommit: 2dde1487b3577e8d3726021c0524c0c5bd5a2671
 ---
 
-Hexkit shows you what a smart-contract call did, or what it would do, in plain names instead of hex. It runs in your browser at [hexkit.app](https://hexkit.app). There is nothing to install and no account to create.
+HexKit shows you what a smart-contract call did, or what it would do, in plain names instead of hex. It runs in your browser at [hexkit.app](https://hexkit.app). There is nothing to install and no account to create.
 
-These docs cover Hexkit's Vara tools, added in October 2026.
+These docs cover HexKit's Vara tools, added in October 2026.
 
 ## Who it's for
 
@@ -22,7 +22,7 @@ These docs cover Hexkit's Vara tools, added in October 2026.
 
 | Tool | Use it to |
 | --- | --- |
-| Message Inspector | Decode a sent message: its call, reply, events and dispatch status. Hexkit fetches the program's interface (IDL) for you. |
+| Message Inspector | Decode a sent message: its call, reply, events and dispatch status. HexKit fetches the program's interface (IDL) for you. |
 | Message Simulation | Calculate a message's reply at a chosen block without signing anything. |
 | Program Interaction | Load a program by ID and query it through forms built from its Sails IDL. |
 | Scenario Tests | Run a program's WASM against a local test runtime and assert replies across several messages. |
@@ -30,7 +30,7 @@ These docs cover Hexkit's Vara tools, added in October 2026.
 | Event Explorer | Decode a program's Sails events over a block range and export them. |
 | Vara.eth Settlement | Match Mirror requests to their replies by message ID and check Ethereum finality. |
 
-Hexkit's EVM tools sit behind the **EVM** switch at the top left of the app. These docs don't cover them yet.
+HexKit's EVM tools sit behind the **EVM** switch at the top left of the app. These docs don't cover them yet.
 
 ## What you need
 
@@ -39,7 +39,7 @@ Hexkit's EVM tools sit behind the **EVM** switch at the top left of the app. The
 
 <CardGroup cols={2}>
   <Card title="Quickstart" href="/quickstart">
-    Decode a real mainnet message in about two minutes.
+    Decode a real mainnet message.
   </Card>
   <Card title="Replay a message at two blocks" href="/guides/replay-a-message">
     Find out whether a message would still succeed today, and why.

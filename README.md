@@ -1,6 +1,6 @@
-# Hexkit docs
+# HexKit docs
 
-Documentation for [Hexkit](https://hexkit.app)'s Vara tools, published with
+Documentation for [HexKit](https://hexkit.app)'s Vara tools, published with
 [Thally](https://thally.io) at **https://hexdocs.thally.app**.
 
 | Page | Source |
@@ -25,8 +25,8 @@ npx --yes @thallylabs/cli@latest check --drift
 npm run build
 ```
 
-`--drift` compares each page's `verifiedCommit` with the pinned Hexkit commit
-in `product/hexkit`. Dependabot moves that pin forward every week; when it does,
+`--drift` compares each page's `verifiedCommit` with the pinned HexKit commit
+in `product/hexkit`. Dependabot is set to move that pin forward weekly; when it does,
 CI flags every page that needs re-checking against the app. See `AGENTS.md`
 for the verify steps.
 

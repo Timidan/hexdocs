@@ -20,7 +20,7 @@
     "dark": "/brand/hexkit-mark-dark.svg"
   },
   "banner": {
-    "content": "These docs now cover Hexkit's Vara tools. The earlier EVM guides are kept at the [synchack-final tag](https://github.com/Timidan/hexdocs/tree/synchack-final).",
+    "content": "These docs now cover HexKit's Vara tools. The earlier EVM guides are kept at the [synchack-final tag](https://github.com/Timidan/hexdocs/tree/synchack-final).",
     "dismissible": true
   },
   "navbar": {
@@ -33,7 +33,7 @@
     "links": [
       { "label": "GitHub", "href": "https://github.com/Timidan/hexkit", "type": "github" }
     ],
-    "primary": { "label": "Open Hexkit", "href": "https://hexkit.app" }
+    "primary": { "label": "Open HexKit", "href": "https://hexkit.app" }
   },
   "footer": {
     "socials": {
@@ -55,7 +55,7 @@
         ]
       }
     ],
-    "copyright": "Copyright {year} Hexkit"
+    "copyright": "Copyright {year} HexKit"
   },
   "feedback": {
     "thumbsRating": true

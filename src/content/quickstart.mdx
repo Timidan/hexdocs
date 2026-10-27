@@ -1,6 +1,6 @@
 ---
 title: Quickstart
-description: Decode a real Vara mainnet message in Hexkit and read its call, reply and events.
+description: Decode a real Vara mainnet message in HexKit and read its call, reply and events.
 lastUpdated: 2026-10-27
 lastVerified: 2026-10-27
 sources:
@@ -10,7 +10,7 @@ verifiedCommit: 2dde1487b3577e8d3726021c0524c0c5bd5a2671
 
 import { ReadOnlyNote } from '/snippets/read-only-note.mdx'
 
-You'll open a message sent on Vara mainnet and find out exactly what it asked a program to do, and what happened. It takes about two minutes.
+You'll open a message sent on Vara mainnet and find out exactly what it asked a program to do, and what happened.
 
 <ReadOnlyNote />
 
@@ -18,7 +18,7 @@ You'll open a message sent on Vara mainnet and find out exactly what it asked a 
   <Step title="Open Message Inspector">
     Go to [hexkit.app/vara/transactions?tool=message](https://hexkit.app/vara/transactions?tool=message).
 
-    From anywhere else in Hexkit, select **Vara** in the chain switcher at the top left, then **Programs & messages → Message Inspector**.
+    From anywhere else in HexKit, select **Vara** in the chain switcher at the top left, then **Programs & messages → Message Inspector**.
   </Step>
   <Step title="Inspect a message">
     Enter `36589852-1` and select **Inspect**.
@@ -28,7 +28,7 @@ You'll open a message sent on Vara mainnet and find out exactly what it asked a 
   <Step title="Read the summary">
     After a few seconds the summary shows the call `gear.sendMessage` marked **Success**, sent to the **Polybaskets** program (`0xa749cc…2cba`).
 
-    The **IDL from Gear IDEA** badge means Hexkit found the program's Sails interface and used it to decode the message.
+    The **IDL from Gear IDEA** badge means HexKit found the program's Sails interface and used it to decode the message.
 
     <Frame>
       <img src="/images/vara-message-inspector.png" alt="Message Inspector showing message 36589852-1 decoded as BasketMarket.FinalizeSettlement with basket_id 1633" />

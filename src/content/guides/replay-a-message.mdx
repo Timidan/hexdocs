@@ -1,6 +1,6 @@
 ---
 title: Replay a message at two blocks
-description: Use Hexkit's dry run to compare how a Vara program replies to the same message at two blocks, then reproduce the result from the terminal.
+description: Use HexKit's dry run to compare how a Vara program replies to the same message at two blocks, then reproduce the result from the terminal.
 lastUpdated: 2026-10-27
 lastVerified: 2026-10-27
 sources:
@@ -10,7 +10,7 @@ verifiedCommit: 2dde1487b3577e8d3726021c0524c0c5bd5a2671
 
 import { ReadOnlyNote } from '/snippets/read-only-note.mdx'
 
-A message that worked last week can fail today because the program's state has changed. Hexkit's dry run sends the same message to the program as it was at two different blocks and puts the replies side by side, so you can see whether a message would still succeed before anyone pays to send it.
+A message that worked last week can fail today because the program's state has changed. HexKit's dry run sends the same message to the program as it was at two different blocks and puts the replies side by side, so you can see whether a message would still succeed before anyone pays to send it.
 
 This guide replays the message from the [Quickstart](/quickstart).
 
@@ -29,7 +29,7 @@ Messages that ran earlier inside the same block are not replayed first. A dry ru
     Inspect `36589852-1` in [Message Inspector](https://hexkit.app/vara/transactions?tool=message&id=36589852-1), then open the **Dry run** tab.
   </Step>
   <Step title="Check the inputs">
-    Hexkit fills in two snapshots from the original message:
+    HexKit fills in two snapshots from the original message:
 
     - **Snapshot A** uses block `36589851`, the block before the message was sent.
     - **Snapshot B** uses `latest`.
@@ -79,7 +79,7 @@ vara-wallet --ws wss://archive-rpc.vara.network message calculate-reply \
   --value '0' --units raw
 ```
 
-It prints the same reply code that Hexkit showed for Snapshot A:
+It prints the same reply code that HexKit showed for Snapshot A:
 
 ```json
 {"payload":"0x","value":"0","valueRaw":"0","code":"{\"success\":\"Auto\"}"}
@@ -96,13 +96,13 @@ Chain and program errors appear in the **Reply** row of the result table. Input 
 | `Program not active at block N` | The program did not exist yet at that block, or had exited. | Pick a block after the program was created. |
 | `History unavailable at block N on wss://archive-rpc.vara.network (state discarded; needs an archive node)` | The node no longer holds state for that block. | Pick a more recent block. |
 | `Dry run not supported by the runtime at block N` | The chain's runtime at that block predates the dry-run API. | Pick a later block. |
-| `The program panics: …` | The program rejected the message at that state. The text after the colon is the program's own error. | Read it as an application error, not a Hexkit or RPC fault. |
+| `The program panics: …` | The program rejected the message at that state. The text after the colon is the program's own error. | Read it as an application error, not a HexKit or RPC fault. |
 | `Block must be a number or latest` | The block field has something else in it, such as a hash or a comma. | Enter digits only, or `latest`. |
 | `Origin must be 32-byte hex` | The sender under **More inputs** is not a 32-byte hex ID. | Paste a `0x…` ActorId. To convert an SS58 address, use the [Address Converter](https://hexkit.app/vara/program-tools?tool=address). |
 | `Payload must be hex` | The raw payload is not `0x`-prefixed hex. | Edit **Args (JSON)** and select **Encode** instead of editing hex by hand. |
 
 <Accordion title="The call shows as hex instead of names">
-  Hexkit could not find the program's IDL, so it cannot decode the payload. Open **Investigation → Load an IDL file…** and choose the program's `.idl` file. Both legacy Sails IDL and IDL v2 files load.
+  HexKit could not find the program's IDL, so it cannot decode the payload. Open **Investigation → Load an IDL file…** and choose the program's `.idl` file. Both legacy Sails IDL and IDL v2 files load.
 </Accordion>
 
 <Accordion title="Snapshot A succeeds but the original message failed">

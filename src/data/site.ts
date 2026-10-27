@@ -91,7 +91,7 @@ export interface SiteConfig {
 
 const brandPresets: Record<BrandPresetKey, BrandConfig> = {
   // A warm neutral foundation with restrained green and violet accents.
-  // Hexkit's app palette: neutral greys with its blue accent.
+  // HexKit's app palette: neutral greys with its blue accent.
   primary: {
     light: {
       background: '#FFFFFF',
@@ -170,15 +170,15 @@ const templateSiteConfig: SiteConfig = {
 // Managed by Thally Cloud onboarding.
 export const siteConfig: SiteConfig = {
   ...templateSiteConfig,
-  name: "Hexkit",
+  name: "HexKit",
   description: "Decode, simulate and debug Vara program messages in your browser.",
   repoUrl: "https://github.com/Timidan/hexdocs",
   links: [
     { label: "Get started", href: "/quickstart" },
-    { label: "Open Hexkit", href: "https://hexkit.app" },
+    { label: "Open HexKit", href: "https://hexkit.app" },
     { label: "Report a docs issue", href: "https://github.com/Timidan/hexdocs/issues/new" },
   ],
   ogImage: {
-    logoText: "Hexkit Docs",
+    logoText: "HexKit Docs",
   },
 };
