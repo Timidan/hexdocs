@@ -25,9 +25,9 @@
   },
   "navbar": {
     "logo": {
-      "light": "/brand/hexkit-mark-light.svg",
-      "dark": "/brand/hexkit-mark-dark.svg",
-      "showTitle": true,
+      "light": "/brand/hexkit-wordmark-light.svg",
+      "dark": "/brand/hexkit-wordmark-dark.svg",
+      "showTitle": false,
       "rightText": "Docs"
     },
     "links": [
