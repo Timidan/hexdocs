@@ -1,5 +1,5 @@
 /**
- * The engine ↔ cloud contract (notes/thally-architecture-plan.md §3).
+ * The engine ↔ cloud contract.
  *
  * Engine code (everything outside `src/cloud/`) may consume cloud-tier features
  * ONLY through these interfaces, resolved via `getCloud()` in
@@ -118,9 +118,8 @@ export interface CloudServices {
 // ---------------------------------------------------------------------------
 
 /**
- * Transitional tiers. `self-hosted-full` is what a deployment with the cloud
- * subtree present gets today; token-backed Thally Cloud plans replace this when the
- * control plane exists (notes/thally-cloud-plan.md §4).
+ * Plan tiers. `self-hosted-full` is what a deployment with the cloud subtree
+ * present gets; token-backed Thally Cloud plans supersede it.
  */
 export type PlanTier = 'free' | 'self-hosted-full'
 
@@ -133,4 +132,46 @@ export interface Entitlements {
     readinessGate: boolean
     teams: boolean
   }
+}
+
+// ---------------------------------------------------------------------------
+// Reader authentication (authenticated docs)
+// ---------------------------------------------------------------------------
+
+/**
+ * Server-side environment bindings that carry reader-auth secrets. Thally
+ * Cloud provisions these as encrypted Worker/host secrets for managed sites;
+ * self-hosted and linked sites set them in their own hosting environment.
+ * Each also accepts its legacy `DOX_*` name. Kept in sync with
+ * `READER_AUTH_ENV` in `@/lib/reader-auth/config`.
+ */
+export type ReaderAuthSecretEnv =
+  | 'THALLY_READER_SESSION_SECRET'
+  | 'THALLY_READER_JWT_SECRET'
+  | 'THALLY_READER_JWT_PUBLIC_KEY'
+  | 'THALLY_READER_JWKS_URL'
+  | 'THALLY_READER_OIDC_ISSUER'
+  | 'THALLY_READER_OIDC_CLIENT_ID'
+  | 'THALLY_READER_OIDC_CLIENT_SECRET'
+  | 'THALLY_READER_TOKEN_KEYS'
+
+/**
+ * How a managed or linked site receives its reader-auth configuration.
+ *
+ * - `policy`: the non-secret `auth` block of docs.json. Managed releases
+ *   deliver it inside the `THALLY_DOCS_CONFIG` snapshot, which the engine
+ *   reads through the same `getDocsJsonConfig()` path as a repository file, so
+ *   build-time decisions (no prerendering, cache policy) and request-time
+ *   enforcement always agree.
+ * - `secrets`: only through {@link ReaderAuthSecretEnv} bindings.
+ *
+ * Deliberately NOT carried in the signed site grant or `CloudSiteConfig`:
+ * the site decodes grants without verification and customer code can read
+ * the managed snapshot, so neither may hold a secret, and widening
+ * `access.mode` beyond `public | password` would make older runtimes reject
+ * the whole grant. A Cloud settings UI writes the two channels above.
+ */
+export interface ReaderAuthDeliveryContract {
+  policy: 'docs.json#auth'
+  secrets: ReadonlyArray<ReaderAuthSecretEnv>
 }

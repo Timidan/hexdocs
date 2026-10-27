@@ -1,10 +1,22 @@
+/** Portable Next.js configuration; deployment providers are optional. */
 import type { NextConfig } from 'next'
-import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare'
+import { createRequire } from 'node:module'
+import { resolve } from 'node:path'
 import docsJson from './docs.json' assert { type: 'json' }
 
-// Make Wrangler bindings available while `next dev` is running. Production
-// receives the same bindings from the OpenNext-generated Worker entrypoint.
-initOpenNextCloudflareForDev()
+// Cloudflare is an optional deployment profile. Resolve it separately from
+// evaluation so an absent provider is allowed while a broken installation or
+// provider initialization error still fails visibly.
+const requireFromConfig = createRequire(resolve('package.json'))
+async function initializeOptionalCloudflare(): Promise<void> {
+  let entrypoint: string
+  try { entrypoint = requireFromConfig.resolve('@opennextjs/cloudflare') } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'MODULE_NOT_FOUND') return
+    throw error
+  }
+  const provider = requireFromConfig(entrypoint)
+  await provider.initOpenNextCloudflareForDev()
+}
 
 interface DocsRedirect {
   source: string
@@ -14,6 +26,14 @@ interface DocsRedirect {
 
 const docRedirects: Array<DocsRedirect> =
   (docsJson as { redirects?: Array<DocsRedirect> }).redirects ?? []
+
+const securityHeaders = [
+  { key: 'Strict-Transport-Security', value: 'max-age=31536000' },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  { key: 'Permissions-Policy', value: 'camera=(), geolocation=(self), microphone=(), payment=(), usb=()' },
+]
 
 const nextConfig: NextConfig = {
   pageExtensions: ['ts', 'tsx'],
@@ -41,6 +61,9 @@ const nextConfig: NextConfig = {
     // THALLY_DISABLE_BUILD_CACHE=1 opts out without editing this file.
     turbopackFileSystemCacheForBuild:
       process.env.THALLY_DISABLE_BUILD_CACHE !== '1',
+  },
+  async headers() {
+    return [{ source: '/:path*', headers: securityHeaders }]
   },
   async redirects() {
     return [
@@ -74,4 +97,8 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default nextConfig
+/** Enable local provider bindings only for a development server with that profile. */
+export default async function configureNext(phase: string): Promise<NextConfig> {
+  if (phase === 'phase-development-server') await initializeOptionalCloudflare()
+  return nextConfig
+}

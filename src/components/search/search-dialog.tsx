@@ -15,10 +15,15 @@ import {
 } from '@/components/ui/command'
 
 interface SearchResult {
+  type?: 'page' | 'api_operation'
   page_id: string
   title: string
   description: string
   url: string
+  /** Deep link to the best-matching section, when the match sits under a heading. */
+  section_url?: string
+  method?: string
+  path?: string
   snippet?: string
 }
 
@@ -29,6 +34,7 @@ interface SearchResponse {
 interface SearchDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  locale?: string
 }
 
 function trackSearch(payload: { query: string; resultCount?: number; clickedSlug?: string }) {
@@ -58,7 +64,7 @@ function toLocalHref(value: string) {
   }
 }
 
-export function SearchDialog({ open, onOpenChange }: SearchDialogProps) {
+export function SearchDialog({ open, onOpenChange, locale }: SearchDialogProps) {
   const router = useRouter()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Array<SearchResult>>([])
@@ -74,7 +80,7 @@ export function SearchDialog({ open, onOpenChange }: SearchDialogProps) {
       setLoading(true)
       try {
         const response = await fetch(
-          `/api/search?q=${encodeURIComponent(normalized)}&limit=8&mode=fulltext`,
+          `/api/search?q=${encodeURIComponent(normalized)}&limit=8&mode=fulltext${locale ? `&locale=${encodeURIComponent(locale)}` : ''}`,
           { signal: controller.signal },
         )
         if (!response.ok) throw new Error(`Search failed with ${response.status}`)
@@ -91,7 +97,7 @@ export function SearchDialog({ open, onOpenChange }: SearchDialogProps) {
       window.clearTimeout(timeout)
       controller.abort()
     }
-  }, [query])
+  }, [query, locale])
 
   const visibleResults = query.trim().length >= 2 ? results : []
 
@@ -112,7 +118,7 @@ export function SearchDialog({ open, onOpenChange }: SearchDialogProps) {
       trackSearch({ query: normalized, clickedSlug: result.page_id })
       lastTrackedRef.current = normalized
     }
-    router.push(toLocalHref(result.url))
+    router.push(toLocalHref(result.section_url ?? result.url))
     onOpenChange(false)
   }
 
@@ -142,7 +148,10 @@ export function SearchDialog({ open, onOpenChange }: SearchDialogProps) {
                   onSelect={() => handleSelect(result)}
                 >
                   <div className="flex min-w-0 flex-col">
-                    <span className="text-sm font-medium">{result.title}</span>
+                    <span className="text-sm font-medium">
+                      {result.method ? <span className="mr-2 font-mono text-xs uppercase text-foreground/60">{result.method}</span> : null}
+                      {result.title}
+                    </span>
                     <span className="truncate text-xs text-foreground/60">
                       {result.description || result.snippet}
                     </span>

@@ -1,22 +1,33 @@
-import type { ReactNode } from 'react'
+'use client'
+
+import { createContext, useContext, type ReactNode } from 'react'
+import { InlineCodeText } from '@/components/mdx/inline-code-text'
+import { plainInlineText } from '@/lib/inline-code'
 import { cn } from '@/lib/utils'
 
 // ---------------------------------------------------------------------------
 // <Steps> — wrapper that resets the CSS counter
 // ---------------------------------------------------------------------------
 
+/** Element a step title renders as. Only `h2`/`h3`/`h4` are headings; `p` is plain text (Mintlify's default). */
+export type StepTitleSize = 'p' | 'h2' | 'h3' | 'h4'
+
 interface StepsProps {
   children: ReactNode
   className?: string
+  /** Default title element for every step; a step's own `titleSize` wins. */
+  titleSize?: StepTitleSize
 }
 
-export function Steps({ children, className }: StepsProps) {
+const StepsTitleSizeContext = createContext<StepTitleSize | undefined>(undefined)
+
+export function Steps({ children, className, titleSize }: StepsProps) {
   return (
     <div
       className={cn('thally-steps relative', className)}
       style={{ counterReset: 'step 0' }}
     >
-      {children}
+      <StepsTitleSizeContext.Provider value={titleSize}>{children}</StepsTitleSizeContext.Provider>
     </div>
   )
 }
@@ -27,10 +38,20 @@ export function Steps({ children, className }: StepsProps) {
 
 interface StepProps {
   title: string
+  titleSize?: StepTitleSize
+  /** Set by the page's heading pass for a title that is a heading, so the table of contents can list it and scroll to it. */
+  id?: string
   children?: ReactNode
 }
 
-export function Step({ title, children }: StepProps) {
+function StepTitle({ as: Title, id, children }: { as: StepTitleSize; id?: string; children: string }) {
+  // A plain-text (`p`) title is never a heading, whatever id it was handed.
+  const heading = id && Title !== 'p' ? { id, 'data-heading': plainInlineText(children), 'data-level': Number(Title[1]) } : undefined
+  return <Title {...heading} className="font-heading text-[1.02rem] font-semibold tracking-[-0.012em] text-foreground"><InlineCodeText>{children}</InlineCodeText></Title>
+}
+
+export function Step({ title, titleSize, id, children }: StepProps) {
+  const inherited = useContext(StepsTitleSizeContext)
   return (
     <div
       className="thally-step relative grid grid-cols-[30px_minmax(0,1fr)] gap-x-5 pb-[34px] last:pb-0"
@@ -44,7 +65,7 @@ export function Step({ title, children }: StepProps) {
 
       {/* Step content */}
       <div className="min-w-0 pt-1">
-        <h3 className="font-heading text-[1.02rem] font-bold tracking-[-0.012em] text-foreground">{title}</h3>
+        <StepTitle as={titleSize ?? inherited ?? 'h3'} id={id}>{title}</StepTitle>
         {children ? (
           <div className="prose prose-sm dark:prose-invert mt-2 max-w-none text-foreground/80">
             {children}

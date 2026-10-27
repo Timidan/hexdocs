@@ -51,7 +51,7 @@ export function Hero({
   return (
     <section className="thally-docs-hero not-prose mb-8 py-7">
       <div className="flex max-w-3xl flex-col items-start text-left">
-        <h1 className="max-w-[17ch] text-balance font-heading text-[2rem] font-medium leading-9 tracking-[-0.025em] text-foreground sm:text-4xl sm:leading-10">
+        <h1 className="max-w-[17ch] text-balance font-heading text-[2rem] font-semibold leading-9 tracking-[-0.02em] text-foreground sm:text-4xl sm:leading-10">
           {title}
         </h1>
         {subtitle ? (
@@ -101,6 +101,11 @@ const columnClassnames: Record<number, string> = {
 export function Columns({ cols = 2, children }: ColumnsProps) {
   const count = typeof cols === 'string' ? Number.parseInt(cols, 10) : cols
   return <div className={cn('grid grid-cols-1 gap-3', columnClassnames[count] ?? columnClassnames[2])}>{children}</div>
+}
+
+/** A single cell inside {@link Columns}; the grid parent handles layout. */
+export function Column({ children }: { children: ReactNode }) {
+  return <div>{children}</div>
 }
 
 interface FrameProps {

@@ -1,38 +1,50 @@
 'use client'
 
-import { ExternalLink, Sparkles } from 'lucide-react'
-import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { SidebarCollection, DocsJsonNavbar } from '@/data/docs'
+/** Shared documentation header with a dedicated full-width collection row. */
+
+import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
+import { ExternalLink, Github, Sparkles, Star } from 'lucide-react'
+import type { SidebarCollection, DocsJsonNavbar, NavigationPresentation, DocsNavigationVersion } from '@/data/docs'
 import { MobileNav } from '@/components/navigation/mobile-nav'
+import { CollectionTabs } from '@/components/navigation/collection-tabs'
+import { getHeaderNavigationLayout } from '@/components/navigation/header-layout'
+import { observeHeaderHeight } from '@/components/navigation/header-height'
 import { CommandSearch } from '@/components/search/command-search'
 import { ThemeSwitch } from '@/components/theme/theme-switch'
 import { VersionSwitcher } from '@/components/docs/version-switcher'
 import { LocaleSwitcher } from '@/components/layout/locale-switcher'
+import { useLocaleAvailability } from '@/components/layout/locale-availability'
 import type { I18nConfig } from '@/components/layout/site-shell'
 import { shell } from '@/config/layout'
 import { cn } from '@/lib/utils'
+import { safeCssColor } from '@/lib/css-color'
 import type { SiteLink } from '@/data/site'
 import { Logo } from '@/components/layout/logo'
 import { displaySiteName, useSiteName } from '@/components/layout/use-site-name'
 import { IntentPrefetchLink } from '@/components/navigation/intent-prefetch-link'
 import { useDocsCodeActions } from '@/components/docs/code-actions-provider'
+import { fetchGithubStars } from '@/components/layout/github-stars'
 
-function matchesPath(targetHref: string, pathname: string) {
-  if (!targetHref || /^https?:\/\//i.test(targetHref)) {
-    return false
-  }
-  const normalize = (value: string) => {
-    if (!value) return '/'
-    if (value === '/') return '/'
-    return value.endsWith('/') ? value.slice(0, -1) : value
-  }
-  const normalizedTarget = normalize(targetHref)
-  const normalizedPath = normalize(pathname)
-  if (normalizedTarget === '/') {
-    return normalizedPath === '/'
-  }
-  return normalizedPath === normalizedTarget || normalizedPath.startsWith(`${normalizedTarget}/`)
+const GITHUB_REPO = /^https:\/\/github\.com\/([\w.-]+\/[\w.-]+)\/?$/i
+
+/** Repository link with a live star count, like Mintlify's `navbar.primary` of type github. */
+function GithubRepoLink({ href, label }: { href: string; label: string }) {
+  const repo = GITHUB_REPO.exec(href)?.[1]
+  const [stars, setStars] = useState<number | null>(null)
+  useEffect(() => {
+    if (!repo) return
+    let active = true
+    void fetchGithubStars(repo).then((count) => { if (active) setStars(count) })
+    return () => { active = false }
+  }, [repo])
+  return (
+    <a href={href} target="_blank" rel="noreferrer" data-topbar-link className="thally-docs-topbar-link inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-[10px] px-2 text-[0.86rem] font-medium text-foreground/70 transition hover:bg-muted hover:text-foreground">
+      <Github className="h-4 w-4 shrink-0" aria-hidden="true" />
+      <span>{repo ?? label}</span>
+      {stars === null ? null : <span className="inline-flex items-center gap-0.5 text-foreground/50"><Star className="h-3.5 w-3.5" aria-hidden="true" />{stars.toLocaleString('en-US')}</span>}
+    </a>
+  )
 }
 
 interface TopBarProps {
@@ -40,11 +52,16 @@ interface TopBarProps {
   activeCollectionId: SidebarCollection['id']
   onCollectionChange: (id: SidebarCollection['id']) => void
   activeSections: SidebarCollection['sections']
+  navigationPresentation: NavigationPresentation
+  navigationVersions?: Array<DocsNavigationVersion>
+  activeVersion?: string
   i18nConfig?: I18nConfig | null
   currentLocale?: string
   currentPath?: string
   navbarConfig?: DocsJsonNavbar | null
   siteLinks: Array<SiteLink>
+  showSidebarGroupIcons?: boolean
+  navigationStatus?: ReactNode
 }
 
 export function TopBar({
@@ -52,17 +69,24 @@ export function TopBar({
   activeCollectionId,
   onCollectionChange,
   activeSections,
+  navigationPresentation,
+  navigationVersions,
+  activeVersion,
   i18nConfig,
   currentLocale,
   currentPath,
   navbarConfig,
   siteLinks,
+  showSidebarGroupIcons = true,
+  navigationStatus,
 }: TopBarProps) {
-  const pathname = usePathname()
-  const router = useRouter()
+  const headerRef = useRef<HTMLElement>(null)
+  const availableLocales = useLocaleAvailability((state) => state.availableByPath[currentPath ?? '/'])
+  useEffect(() => {
+    if (headerRef.current) return observeHeaderHeight(headerRef.current)
+  }, [])
   const siteName = useSiteName()
-  const topbarRef = useRef<HTMLDivElement>(null)
-  const [isNavigationCompact, setIsNavigationCompact] = useState(false)
+  const headerNavigationLayout = getHeaderNavigationLayout(navigationPresentation.display, collections.length)
   const {
     hasAssistantEntryPoint,
     assistantLabel,
@@ -85,180 +109,104 @@ export function TopBar({
     })
 
   // navbarConfig.primary overrides the siteConfig CTA when present
-  const primaryCta = navbarConfig?.primary
-    ? { label: navbarConfig.primary.label, href: navbarConfig.primary.href }
+  const primaryCta = navbarConfig && Object.hasOwn(navbarConfig, 'primary')
+    ? navbarConfig.primary && navbarConfig.primary.type !== 'github'
+      ? { label: navbarConfig.primary.label, href: navbarConfig.primary.href }
+      : undefined
     : siteConfigCta
-  const visibleLinkCount = navbarConfig?.links?.length ?? (supportLink ? 1 : 0)
+  const githubPrimary = navbarConfig?.primary?.type === 'github' ? navbarConfig.primary : undefined
+  // GitHub is part of the footer's social cluster in the default docs shell.
+  // SiteShell carries legacy navbar-only GitHub links into the footer so an
+  // existing site does not lose its repository destination during upgrade.
+  const navbarLinks = navbarConfig?.links?.filter((link) => link.type !== 'github') ?? []
+  const visibleLinkCount = navbarConfig?.links ? navbarLinks.length : (supportLink ? 1 : 0)
   // Preserve the generous default search affordance for typical documentation
   // sites. Only dense, highly customized navbars opt into the compact layout.
-  const isCrowded = collections.length + visibleLinkCount + (primaryCta ? 1 : 0) >= 8
-
-  // Site-defined tab labels, links, and CTAs vary too much for viewport-only
-  // breakpoints. Once the rendered header overflows—or the fixed-width search
-  // control touches the assistant—latch the compact menu until the viewport
-  // changes. The collision check matters because CSS overflow can paint outside
-  // a flex item without contributing to its parent's scroll width.
-  useLayoutEffect(() => {
-    if (isNavigationCompact) return
-    const topbar = topbarRef.current
-    if (!topbar) return
-
-    const detectOverflow = () => {
-      const assistant = topbar.querySelector<HTMLElement>('.thally-docs-assistant-trigger')
-      const searchButtons = Array.from(
-        topbar.querySelectorAll<HTMLElement>('.thally-docs-search > button'),
-      ).filter((button) => button.offsetParent !== null)
-      const assistantBounds = assistant?.getBoundingClientRect()
-      const hasAssistantCollision = assistantBounds
-        ? searchButtons.some((button) => {
-          const searchBounds = button.getBoundingClientRect()
-          return searchBounds.left < assistantBounds.right && searchBounds.right > assistantBounds.left
-        })
-        : false
-      if (topbar.scrollWidth > topbar.clientWidth + 1 || hasAssistantCollision) {
-        setIsNavigationCompact(true)
-      }
-    }
-
-    detectOverflow()
-    const observer = new ResizeObserver(detectOverflow)
-    observer.observe(topbar)
-    return () => observer.disconnect()
-  }, [isNavigationCompact])
-
-  useEffect(() => {
-    if (!isNavigationCompact) return
-    let animationFrame = 0
-    const retryFullNavigation = () => {
-      cancelAnimationFrame(animationFrame)
-      animationFrame = requestAnimationFrame(() => setIsNavigationCompact(false))
-    }
-    window.addEventListener('resize', retryFullNavigation)
-    return () => {
-      cancelAnimationFrame(animationFrame)
-      window.removeEventListener('resize', retryFullNavigation)
-    }
-  }, [isNavigationCompact])
+  const isCrowded = visibleLinkCount + (primaryCta ? 1 : 0) >= 8
 
   return (
-    <header className="thally-docs-topbar sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur-xl">
+    <header ref={headerRef} className="thally-docs-topbar sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur-xl">
       <div
-        ref={topbarRef}
-        className={cn('thally-docs-topbar-inner flex h-14 items-center gap-3', shell.topbar)}
+        className={cn('thally-docs-topbar-inner flex h-[60px] items-center gap-3', shell.topbar)}
         data-density={isCrowded ? 'compact' : 'comfortable'}
-        data-navigation-mode={isNavigationCompact ? 'compact' : 'full'}
       >
-        <MobileNav sections={activeSections} />
-        {/* The brand block needs clear separation from the section tabs or
-            "Docs" reads as the first tab; mr-5 marks where the brand ends. */}
+        <MobileNav
+          navigationPresentation={navigationPresentation}
+          sections={activeSections}
+          collections={collections}
+          activeCollectionId={activeCollectionId}
+          onCollectionChange={onCollectionChange}
+          showGroupIcons={showSidebarGroupIcons}
+          status={navigationStatus}
+        />
         <IntentPrefetchLink
           href="/"
-          className="thally-docs-brand mr-5 flex shrink-0 items-center gap-2 text-foreground"
+          className="thally-docs-brand mr-5 flex min-w-0 items-center gap-2 text-foreground"
         >
-          <Logo showText={false} className="shrink-0" />
-          <span className="font-heading text-[1rem] font-bold tracking-[-0.015em]">
-            {displaySiteName(siteName)}
-          </span>
-          <span className="-ml-1 font-heading text-[1rem] font-medium text-foreground/55">Docs</span>
+          {navbarConfig?.logo === null ? null : <Logo showText={false} />}
+          {navbarConfig?.logo?.showTitle !== false ? (
+            <span className="truncate font-heading text-[1rem] font-semibold tracking-[-0.015em]">
+              {displaySiteName(siteName)}
+            </span>
+          ) : null}
+          {navbarConfig?.logo?.rightText ? (
+            <span className="-ml-1 shrink-0 font-heading text-[1rem] font-medium text-foreground/55">{navbarConfig.logo.rightText}</span>
+          ) : null}
+          {navbarConfig?.logo === undefined ? (
+            <span className="-ml-1 shrink-0 font-heading text-[1rem] font-medium text-foreground/55">Docs</span>
+          ) : null}
         </IntentPrefetchLink>
-        <nav className="thally-docs-tabs flex h-full items-center gap-[17px]" aria-label="Documentation sections">
-          {collections.map((collection) => {
-            const isActive = collection.id === activeCollectionId
-            const baseClasses = cn(
-              'thally-nav-tab-item group relative flex h-full shrink-0 items-center whitespace-nowrap border-b-[1.5px] px-0 pt-px text-left text-[0.88rem] font-medium transition',
-              isActive
-                ? 'thally-nav-tab-active border-foreground font-semibold text-foreground'
-                : 'border-transparent text-foreground/60 hover:text-foreground',
-            )
-            if (collection.href) {
-              const isExternal = /^https?:\/\//.test(collection.href)
-              if (isExternal) {
-                return (
-                  <a
-                    key={collection.id}
-                    href={collection.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={baseClasses}
-                  >
-                    {collection.label}
-                  </a>
-                )
-              }
-              return (
-                <IntentPrefetchLink
-                  key={collection.id}
-                  href={collection.href}
-                  className={baseClasses}
-                >
-                  {collection.label}
-                </IntentPrefetchLink>
-              )
-            }
-            return (
-              <button
-                key={collection.id}
-                type="button"
-                onClick={() => {
-                  const targetHref = collection.href
-                  const alreadyActive = targetHref ? matchesPath(targetHref, pathname) : false
-                  onCollectionChange(collection.id)
-                  if (!alreadyActive && targetHref && !matchesPath(targetHref, pathname)) {
-                    router.push(targetHref)
-                  }
-                }}
-                className={baseClasses}
-              >
-                {collection.label}
-              </button>
-            )
-          })}
-        </nav>
-        <div className="thally-docs-actions ml-auto flex shrink-0 items-center gap-2">
+        {navigationVersions && navigationVersions.length > 1 ? (
+          <VersionSwitcher versions={navigationVersions} activeLabel={activeVersion} />
+        ) : null}
+        {i18nConfig && i18nConfig.locales.length >= 2 ? (
+          <LocaleSwitcher locales={i18nConfig.locales} availableLocales={availableLocales ?? [i18nConfig.defaultLocale]} currentLocale={currentLocale ?? i18nConfig.defaultLocale} currentPath={currentPath ?? '/'} defaultLocale={i18nConfig.defaultLocale} />
+        ) : null}
+        <div className="thally-docs-actions ml-auto flex min-w-0 items-center gap-2">
           <div className="thally-docs-search shrink-0">
-            <CommandSearch />
+            <CommandSearch locale={currentLocale} />
           </div>
           {hasAssistantEntryPoint ? (
             <button
               type="button"
               aria-label={assistantActionLabel}
               aria-keyshortcuts="Meta+I Control+I"
-              className="thally-docs-assistant-trigger inline-flex h-[30px] shrink-0 items-center gap-2 rounded-full border border-transparent bg-muted/55 px-3 text-[0.84rem] font-semibold text-foreground/80 transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="thally-docs-assistant-trigger inline-flex h-9 shrink-0 items-center gap-2 rounded-[10px] px-3 text-[0.84rem] font-semibold text-foreground/80 transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={openAssistant}
             >
               <Sparkles className="h-4 w-4 shrink-0" aria-hidden="true" />
               <span className="truncate">{assistantActionLabel}</span>
-              <kbd className="thally-docs-assistant-shortcut rounded-md border border-border/70 bg-muted px-1.5 py-0.5 font-mono text-[0.66rem] font-medium text-foreground/60">
-                ⌘I
-              </kbd>
             </button>
           ) : null}
-          {navbarConfig?.links && navbarConfig.links.length > 0
-            ? navbarConfig.links.map((link) => {
+          {hasAssistantEntryPoint ? (
+            <span className="thally-docs-action-divider h-5 w-px bg-border" aria-hidden="true" />
+          ) : null}
+          {githubPrimary ? <GithubRepoLink href={githubPrimary.href} label={githubPrimary.label} /> : null}
+          {navbarConfig?.links
+            ? <div className="thally-docs-navlinks flex min-w-0 items-center gap-2 overflow-hidden">{navbarLinks.map((link) => {
                 const isExternal = /^https?:\/\//.test(link.href)
-                const isGithub = link.type === 'github'
                 return (
-                  <a key={link.href} href={link.href} target={isExternal ? '_blank' : undefined} rel={isExternal ? 'noreferrer' : undefined} data-topbar-link className="thally-docs-topbar-link inline-flex items-center gap-1.5 whitespace-nowrap text-[0.86rem] font-medium text-foreground/70 transition hover:text-foreground">
-                    {isGithub ? (
-                      <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden="true"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2Z" /></svg>
-                    ) : isExternal ? <ExternalLink className="h-3.5 w-3.5" /> : null}
+                  <a key={link.href} href={link.href} target={isExternal ? '_blank' : undefined} rel={isExternal ? 'noreferrer' : undefined} aria-label={link.label} title={link.label} data-topbar-link data-topbar-text="" style={link.button ? { backgroundColor: safeCssColor(link.button.background), color: safeCssColor(link.button.color) ?? '#fff' } : undefined} className={cn('thally-docs-topbar-link inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-[10px] px-2 text-[0.86rem] font-medium text-foreground/70 transition hover:bg-muted hover:text-foreground', link.button && 'px-[15px] font-semibold hover:brightness-110')}>
+                    {isExternal && !link.button ? <ExternalLink className="h-3.5 w-3.5" /> : null}
                     <span>{link.label}</span>
                   </a>
                 )
-              })
+              })}</div>
             : supportLink ? (
                 <IntentPrefetchLink href={supportLink.href} className="thally-docs-topbar-link hidden whitespace-nowrap text-[0.86rem] font-medium text-foreground/70 hover:text-foreground sm:inline-flex">{supportLink.label}</IntentPrefetchLink>
               ) : null}
-          {primaryCta ? (
-            <IntentPrefetchLink href={primaryCta.href} className="thally-docs-primary inline-flex h-[30px] shrink-0 items-center whitespace-nowrap rounded-[9px] bg-primary px-3 text-[0.84rem] font-semibold text-primary-foreground transition hover:brightness-125 active:scale-[0.98]">{primaryCta.label}</IntentPrefetchLink>
-          ) : null}
-          <VersionSwitcher />
-          {i18nConfig && i18nConfig.locales.length >= 2 ? (
-            <LocaleSwitcher locales={i18nConfig.locales} currentLocale={currentLocale ?? i18nConfig.defaultLocale} currentPath={currentPath ?? '/'} defaultLocale={i18nConfig.defaultLocale} />
-          ) : null}
+          {!navigationVersions || navigationVersions.length === 0 ? <VersionSwitcher /> : null}
           <ThemeSwitch />
+          {primaryCta ? (
+            <IntentPrefetchLink href={primaryCta.href} className="thally-docs-primary inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-[10px] bg-primary px-[15px] text-[0.84rem] font-semibold text-primary-foreground transition hover:brightness-110 active:scale-[0.98]">{primaryCta.label}</IntentPrefetchLink>
+          ) : null}
         </div>
       </div>
+      {headerNavigationLayout === 'stacked' ? (
+        <div className={cn('thally-docs-collection-row', shell.topbar)}>
+          <CollectionTabs collections={collections} activeCollectionId={activeCollectionId} onCollectionChange={onCollectionChange} />
+        </div>
+      ) : null}
     </header>
   )
 }

@@ -1,12 +1,23 @@
 import { loadSidebarCollections, loadDocEntries } from '@/data/docs'
 import { siteUrlMismatch } from '@/lib/site-url'
 import { resolveSiteConfig } from '@/lib/site-config'
+import { findChangelogPages } from '@/lib/changelog'
+import { getReaderAuthConfig } from '@/lib/reader-auth/config'
+import { canReaderAccessUnmarkedContent } from '@/lib/reader-auth/access'
+import { getReaderContextFromRequest } from '@/lib/reader-auth/context'
+import { contentCacheControl } from '@/lib/reader-auth/cache'
 
 export async function GET(request: Request) {
   const baseUrl = new URL(request.url).origin
   const effectiveSite = await resolveSiteConfig(baseUrl)
-  const entries = await loadDocEntries()
-  const collections = await loadSidebarCollections()
+  // The index lists exactly what this reader may open (anonymous by default).
+  const reader = await getReaderContextFromRequest(request)
+  const entries = await loadDocEntries(reader)
+  const entriesByHref = new Map(entries.map((entry) => [entry.href, entry]))
+  const collections = await loadSidebarCollections(undefined, reader)
+  // Changelog feeds are anonymous projections: advertise them only when an
+  // anonymous reader can see a changelog page.
+  const hasChangelog = (await findChangelogPages()).length > 0
 
   const lines: Array<string> = []
 
@@ -38,31 +49,52 @@ export async function GET(request: Request) {
   lines.push(`- Agent guidance (editing these docs): ${baseUrl}/AGENTS.md`)
   lines.push(`- MCP server (attach docs as native tools): ${baseUrl}/api/mcp`)
   lines.push(`- Agent readiness: ${baseUrl}/api/agent-readiness`)
+  if (hasChangelog) {
+    lines.push(`- Changelog feed (JSON Feed): ${baseUrl}/changelog/feed.json`)
+    lines.push(`- Changelog feed (RSS): ${baseUrl}/changelog/rss.xml`)
+  }
   lines.push('')
   lines.push('### Recommended workflow')
   lines.push('')
-  lines.push('1. Use this index, the search API, or `search_docs` before choosing a page.')
+  lines.push('1. Use this index, the search API, or `search_sections` / `search_docs` before choosing a page.')
   lines.push('2. Read the smallest set of relevant pages and follow their prerequisite links.')
   lines.push('3. Treat the published docs as the source of truth. Label inferences and say when evidence is missing.')
   lines.push('4. Cite the canonical human page URLs, not only API endpoints.')
   lines.push('5. Use `/AGENTS.md` before editing a repository. The public MCP server is read-only.')
   lines.push('')
 
-  // Sections grouped by tab > group
+  // Sections grouped by tab > group. API tabs may mix generated operations
+  // with authored MDX overviews; only the latter belong in this page corpus.
+  const emittedCollections = new Set<string>()
   for (const collection of collections) {
-    if (collection.href || collection.api) continue // skip link tabs and API tabs
+    const standaloneHref = collection.sections.length === 0 && collection.href?.startsWith('/') && !collection.href.startsWith('//')
+      ? entriesByHref.get(collection.href)
+      : undefined
+    const sections = collection.sections
+      .map((section) => ({
+        ...section,
+        items: section.items.filter((item) => entriesByHref.has(item.href)),
+      }))
+      .filter((section) => section.items.length > 0)
+    if (!standaloneHref && sections.length === 0) continue
 
     lines.push(`## ${collection.label}`)
     lines.push('')
+    emittedCollections.add(collection.id)
 
-    for (const section of collection.sections) {
+    if (standaloneHref) {
+      lines.push(`- [${standaloneHref.title}](${baseUrl}${standaloneHref.href})${standaloneHref.description ? `: ${standaloneHref.description}` : ''}`)
+      lines.push('')
+    }
+
+    for (const section of sections) {
       if (section.title) {
         lines.push(`### ${section.title}`)
         lines.push('')
       }
 
       for (const item of section.items) {
-        const entry = entries.find((e) => e.href === item.href)
+        const entry = entriesByHref.get(item.href)
         const desc = entry?.description || item.description || ''
         const url = `${baseUrl}${item.href}`
         lines.push(`- [${item.title}](${url})${desc ? `: ${desc}` : ''}`)
@@ -72,10 +104,14 @@ export async function GET(request: Request) {
   }
 
   // Optional: API reference mention
-  const apiCollection = collections.find((c) => c.api)
+  const apiCollection = canReaderAccessUnmarkedContent(reader, getReaderAuthConfig())
+    ? collections.find((c) => c.api)
+    : undefined
   if (apiCollection) {
-    lines.push(`## ${apiCollection.label}`)
-    lines.push('')
+    if (!emittedCollections.has(apiCollection.id)) {
+      lines.push(`## ${apiCollection.label}`)
+      lines.push('')
+    }
     lines.push(`Interactive API reference available at ${baseUrl}/api`)
     lines.push('')
   }
@@ -89,7 +125,7 @@ export async function GET(request: Request) {
   return new Response(body, {
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',
-      'Cache-Control': 'public, max-age=3600, s-maxage=3600',
+      'Cache-Control': contentCacheControl('public, max-age=3600, s-maxage=3600'),
       ...(mismatch ? { 'X-Thally-Site-Url-Warning': mismatch } : {}),
     },
   })

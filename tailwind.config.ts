@@ -1,21 +1,86 @@
 import type { Config } from 'tailwindcss'
 import typography from '@tailwindcss/typography'
 
+const isClassChar = (c: string | undefined) => c !== undefined && /[\w:-]/.test(c)
+
+// Removes `name[...var(...*...)...]` classes whose variable name contains `*`. A single pass with no regex
+// backtracking: prose can be adversarial, and the equivalent regex is
+// super-linear on inputs like `w[var(a*` repeated.
+function stripWildcardVarClasses(content: string): string {
+  const n = content.length
+  let out = ''
+  let last = 0
+  let i = 0
+  while (i < n) {
+    const open = content.indexOf('[', i)
+    if (open < 0) break
+    let stop = open + 1
+    while (stop < n && content[stop] !== ']' && !/\s/.test(content[stop])) stop++
+    i = stop + 1
+    if (stop >= n || content[stop] !== ']') continue
+    // First `var(` ... `*` ... `)` between the brackets.
+    let varAt = -1
+    let star = false
+    let inName = false
+    let found = -1
+    for (let q = open + 1; q < stop; q++) {
+      const c = content[q]
+      if (c === ')') {
+        if (varAt >= 0 && star) { found = varAt; break }
+        varAt = -1
+        star = false
+        inName = false
+      } else if (varAt < 0 && content.startsWith('var(', q)) {
+        varAt = q
+        inName = true
+        q += 3
+      } else if (c === ',') {
+        inName = false
+      } else if (c === '*' && inName) {
+        // Only a `*` in the variable name is a placeholder; one in a
+        // fallback such as `calc(1*2)` is valid CSS.
+        star = true
+      }
+    }
+    if (found < 0) continue
+    let bracket = -1
+    for (let j = open; j < found; j++) {
+      if (content[j] === '[' && j > last && isClassChar(content[j - 1])) { bracket = j; break }
+    }
+    if (bracket < 0) continue
+    let start = bracket
+    while (start > last && isClassChar(content[start - 1])) start--
+    out += content.slice(last, start)
+    last = stop + 1
+  }
+  return out + content.slice(last)
+}
+
 const config: Config = {
   darkMode: ['class'],
-  content: [
-    './src/app/**/*.{ts,tsx,mdx}',
-    './src/components/**/*.{ts,tsx,mdx}',
-    './src/content/**/*.{mdx,md}',
-    './src/data/**/*.{ts,tsx}',
-    './src/config/**/*.{ts,tsx}',
-    './mdx-components.tsx',
-  ],
+  content: {
+    files: [
+      './src/app/**/*.{ts,tsx,mdx}',
+      './src/components/**/*.{ts,tsx,mdx}',
+      './src/content/**/*.{mdx,md}',
+      './src/data/**/*.{ts,tsx}',
+      './src/config/**/*.{ts,tsx}',
+      './mdx-components.tsx',
+    ],
+    // Prose often shows a wildcard placeholder such as
+    // `text-[length:var(--text-*)]`. Tailwind turns it into a utility whose
+    // `var(--text-*)` is invalid CSS and fails the stylesheet build, so drop
+    // arbitrary values with a `*` inside `var()` before they are scanned.
+    transform: {
+      md: (content: string) => stripWildcardVarClasses(content),
+      mdx: (content: string) => stripWildcardVarClasses(content),
+    },
+  },
   theme: {
     extend: {
       fontFamily: {
         sans: ['var(--font-sans)', 'Inter', 'system-ui', 'sans-serif'],
-        heading: ['var(--font-heading)', 'var(--font-display)', 'var(--font-sans)', 'Plus Jakarta Sans', 'Inter', 'sans-serif'],
+        heading: ['var(--font-heading)', 'var(--font-sans)', 'Inter', 'sans-serif'],
         mono: ['var(--font-mono)', 'JetBrains Mono', 'IBM Plex Mono', 'monospace'],
       },
       fontSize: {
@@ -95,14 +160,13 @@ const config: Config = {
             '--tw-prose-invert-th-borders': 'hsl(var(--thally-border))',
             '--tw-prose-invert-td-borders': 'hsl(var(--thally-border) / 0.7)',
             color: 'var(--tw-prose-body)',
-            // Keep prose on the same 16/24 reading rhythm as cards and page
-            // summaries. Components may narrow the measure, but should not
-            // silently introduce a second body-text scale.
+            // Keep prose on the 16/28 reading rhythm used across the public
+            // documentation surface.
             fontSize: '1rem',
-            lineHeight: '1.5',
+            lineHeight: '1.75',
             p: {
-              marginTop: theme('spacing.6'),
-              marginBottom: theme('spacing.6'),
+              marginTop: theme('spacing.5'),
+              marginBottom: theme('spacing.5'),
             },
             '[class~="lead"]': {
               fontSize: theme('fontSize.base')[0],
@@ -223,29 +287,29 @@ const config: Config = {
             // this config styles every heading, MDX or plain markdown.
             h1: {
               color: 'var(--tw-prose-headings)',
-              fontWeight: '500',
-              letterSpacing: '-0.02em',
+              fontWeight: '600',
+              letterSpacing: '-0.025em',
               fontSize: theme('fontSize.4xl')[0],
               ...theme('fontSize.4xl')[1],
-              marginBottom: theme('spacing.2'),
+              marginBottom: '0',
             },
             h2: {
               color: 'var(--tw-prose-headings)',
               fontWeight: '600',
-              letterSpacing: '-0.02em',
+              letterSpacing: '-0.025em',
               fontSize: theme('fontSize.2xl')[0],
               ...theme('fontSize.2xl')[1],
-              marginTop: theme('spacing.16'),
-              marginBottom: theme('spacing.2'),
+              marginTop: theme('spacing.9'),
+              marginBottom: '1.125rem',
             },
             h3: {
               color: 'var(--tw-prose-headings)',
               fontSize: theme('fontSize.xl')[0],
               ...theme('fontSize.xl')[1],
               fontWeight: '600',
-              letterSpacing: '-0.015em',
-              marginTop: theme('spacing.10'),
-              marginBottom: theme('spacing.2'),
+              letterSpacing: '-0.025em',
+              marginTop: theme('spacing.8'),
+              marginBottom: theme('spacing.3.5'),
             },
             'img, video, figure': {
               marginTop: theme('spacing.8'),

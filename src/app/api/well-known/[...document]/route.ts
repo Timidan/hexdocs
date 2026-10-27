@@ -101,11 +101,13 @@ export function mcpServerCard(
           documentation: `${origin}/auth.md`,
         }
       : { type: 'none' },
-    capabilities: { tools: { listChanged: false } },
+    capabilities: { tools: { listChanged: false }, resources: { subscribe: false, listChanged: false } },
     tools: toolMetadata.map((tool) => ({
       name: tool.name,
+      title: tool.title,
       description: tool.description,
       inputSchema: tool.inputSchema,
+      annotations: tool.annotations,
     })),
     documentation: `${origin}/auth.md`,
   })
@@ -204,9 +206,9 @@ User-Agent: your-agent/1.0
 \`\`\`
 
 The cookie is required for documentation pages, search, the page index, page
-reads, and the MCP server. Public discovery documents such as \`/openapi.json\`,
-\`/.well-known/oauth-protected-resource\`, and this guide remain reachable
-without the cookie so clients can discover the access model.
+reads, and the MCP server. Non-content discovery documents such as \`/ai.txt\`,
+\`/skill.md\`, \`/.well-known/oauth-protected-resource\`, and this guide remain
+reachable without the cookie so clients can discover the access model.
 
 ## Step 3 — Attach over MCP (optional)
 

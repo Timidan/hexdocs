@@ -1,45 +1,33 @@
 /** Request-bound documentation shell shared by every rendered content route. */
 
+import { shouldShowPoweredBy } from '@/lib/cloud-link/powered-by'
+import { getBuildContentControls } from '@/lib/cloud-link/content-controls'
 import { SiteShell } from '@/components/layout/site-shell'
 import { SidebarCollectionsHydrator } from '@/components/layout/sidebar-hydrator'
-import { loadSidebarCollections, getAiConfig, getNavbarConfig, getFooterConfig } from '@/data/docs'
-import type { NavigationSection } from '@/data/docs'
-import { buildApiNavigation } from '@/data/api-reference'
+import { getAiConfig, getNavbarConfig, getFooterConfig, getNavigationPresentation, getNavigationVersions, getNavigationShortcuts } from '@/data/docs'
 import { DocsCodeActionsProvider } from '@/components/docs/code-actions-provider'
-import { getBuildI18nConfig } from '@/lib/i18n/request'
+import { getEffectiveI18nConfig } from '@/lib/i18n/request'
 import { resolveBuildSiteConfig, siteIdentity } from '@/lib/site-config'
+import { loadNavigationSnapshot } from '@/lib/navigation-snapshot-server'
 
 interface DocsLayoutProps {
   children: React.ReactNode
 }
 
+/** Resolve attribution on the server so paid removal never emits footer markup. */
 export default async function DocsLayout({ children }: DocsLayoutProps) {
-  const navigation = await buildApiNavigation()
-  const apiSections: Array<NavigationSection> = navigation.map((group) => ({
-    title: group.title,
-    items: group.items.map((item) => ({
-      id: item.id,
-      title: item.title,
-      href: item.href,
-      badge: item.badge,
-      description: `${item.method} ${item.path}`,
-    })),
-  }))
-
-  const sidebarCollections = await loadSidebarCollections()
-  const collections = sidebarCollections.map((collection) => {
-    if (collection.api && collection.api.navigation !== false) {
-      // Merge MDX-based sections (from docs.json groups) with OpenAPI-generated sections
-      const mdxSections = collection.sections ?? []
-      const mergedSections = [...mdxSections, ...apiSections]
-      return { ...collection, sections: mergedSections }
-    }
-    return collection
-  })
+  const showPoweredBy = await shouldShowPoweredBy()
+  const contentControls = getBuildContentControls()
+  // Navigation is filtered per reader: restricted page titles never reach
+  // readers who cannot open them. API-reference navigation has no page
+  // frontmatter, so it follows the site default visibility.
+  const navigationSnapshot = await loadNavigationSnapshot('default')
+  const collections = navigationSnapshot.collections
   const aiConfig = getAiConfig()
-  const i18nConfig = getBuildI18nConfig()
+  const i18nConfig = await getEffectiveI18nConfig()
   const navbarConfig = getNavbarConfig()
   const footerConfig = getFooterConfig()
+  const navigationPresentation = getNavigationPresentation()
   const effectiveSite = resolveBuildSiteConfig()
   const codeReportRepositoryUrl =
     effectiveSite.repoUrl ||
@@ -48,7 +36,7 @@ export default async function DocsLayout({ children }: DocsLayoutProps) {
 
   return (
     <>
-      <SidebarCollectionsHydrator collections={collections} />
+      <SidebarCollectionsHydrator collections={collections} snapshot={navigationSnapshot} />
       <DocsCodeActionsProvider
         initialRepositoryUrl={codeReportRepositoryUrl}
         label={aiConfig.label}
@@ -56,9 +44,15 @@ export default async function DocsLayout({ children }: DocsLayoutProps) {
       >
         <SiteShell
           initialCollections={collections}
+          navigationSnapshot={navigationSnapshot}
           i18nConfig={i18nConfig}
           navbarConfig={navbarConfig}
           footerConfig={footerConfig}
+          showPoweredBy={showPoweredBy}
+          showSidebarGroupIcons={contentControls.showSidebarGroupIcons}
+          navigationPresentation={navigationPresentation}
+          navigationVersions={getNavigationVersions()}
+          navigationShortcuts={getNavigationShortcuts()}
           identity={siteIdentity(effectiveSite)}
         >
           {children}

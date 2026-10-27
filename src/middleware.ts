@@ -1,3 +1,5 @@
+/** Edge-safe request gating, machine negotiation, analytics, and cache policy. */
+
 import { NextResponse } from 'next/server'
 import type { NextFetchEvent, NextRequest } from 'next/server'
 import {
@@ -10,16 +12,22 @@ import {
   isDocsAccessGrantedEdge,
 } from '@/lib/admin/auth-edge'
 import { classifyRequest, isAgentRequest } from '@/lib/traffic-classifier'
-import { isMachineEndpoint, isPublicAgentEndpoint } from '@/lib/agent-endpoints'
+import {
+  isAgentDiscoveryEndpoint,
+  isContentBearingAgentEndpoint,
+  isMachineEndpoint,
+  isPublicAgentEndpoint,
+} from '@/lib/agent-endpoints'
 import { verifySession, SESSION_COOKIE } from '@/lib/auth/session'
 import { getCloudAccessConfigEdge, getManagedSiteIdEdge } from '@/lib/cloud-link/edge'
 import { isMarkdownPagesEnabled } from '@/lib/markdown-pages'
 import { createDailyVisitorKey, externalReferrerDomain } from '@/lib/analytics/identity'
 import { problemResponse } from '@/lib/http/problem'
+import { isReaderAuthActive } from '@/lib/reader-auth/config'
 
 // Static API paths are known without importing the Node-only content graph.
-// Paths outside this set may still be visual API-reference pages, so browser
-// and RSC navigation bypass the JSON fallback below.
+// Paths outside this set may still be author-owned API-reference pages, so
+// explicit machine requests negotiate through the document projection.
 const PUBLIC_API_PATHS = new Set([
   '/api/access/auth',
   '/api/agent-readiness',
@@ -53,13 +61,32 @@ function isKnownApiPath(pathname: string): boolean {
   )
 }
 
-function isBrowserOrRscNavigation(request: NextRequest): boolean {
-  return (
-    request.headers.get('accept')?.includes('text/html') === true ||
-    request.headers.has('rsc') ||
-    request.headers.has('next-router-state-tree') ||
-    request.headers.has('next-router-prefetch')
-  )
+/**
+ * Identify paths that may resolve to a rendered documentation page.
+ *
+ * API reference pages share the `/api` namespace with service endpoints. The
+ * edge runtime cannot load the Node-only content graph, so unknown paths stay
+ * eligible and the App Router remains responsible for resolving or 404ing
+ * them. Known service endpoints must never advertise page-level discovery.
+ */
+function isPotentialDocsPagePath(pathname: string): boolean {
+  if (pathname.startsWith('/admin') || pathname.startsWith('/_next')) return false
+  if (pathname === '/api' || pathname.startsWith('/api/')) return !isKnownApiPath(pathname)
+  return true
+}
+
+/**
+ * Decide whether a machine request targets a canonical documentation page.
+ *
+ * `/api/*` cannot be treated as API-only: authors may legitimately place MDX
+ * pages there (for example `/api/overview`). Known service endpoints stay
+ * terminal, while every other explicit machine request uses the content
+ * projection and lets that route resolve the page or return its own 404.
+ */
+function shouldNegotiateDocPage(request: NextRequest, pathname: string): boolean {
+  if (!isAgentRequest(request, pathname)) return false
+  if (pathname.startsWith('/api/')) return !isKnownApiPath(pathname)
+  return !isMachineEndpoint(pathname)
 }
 
 function shouldTrackPath(pathname: string): boolean {
@@ -68,9 +95,10 @@ function shouldTrackPath(pathname: string): boolean {
   if (pathname.startsWith('/admin') || pathname.startsWith('/_next')) {
     return false
   }
-  // Access gate, the generated icon, and static image assets.
+  // Access gate, reader sign-in handoff, the generated icon, and static image assets.
   if (
     pathname === '/access' ||
+    pathname === '/login/jwt-callback' ||
     pathname === '/icon' ||
     pathname.endsWith('.ico') ||
     pathname.endsWith('.png') ||
@@ -157,7 +185,7 @@ function isCacheableDocsPage(request: NextRequest, pathname: string, docsAccessE
   )
 }
 
-async function buildAnalyticsPayload(request: NextRequest, pathname: string) {
+async function buildAnalyticsPayload(request: NextRequest, pathname: string, secret: string) {
   const classification = classifyRequest(request, pathname)
   const slugPath = pathname === '/' ? 'introduction' : pathname.slice(1).replace(/\.md$/, '')
 
@@ -166,7 +194,7 @@ async function buildAnalyticsPayload(request: NextRequest, pathname: string) {
   // /.well-known/) are 'discovery' — not docs page views. Without this,
   // /.well-known/mcp.json and /auth.md were recorded as 'page_view' with bogus
   // slugs like '.well-known/mcp.json' and 'auth', masquerading as docs pages.
-  const isDiscovery = isPublicAgentEndpoint(pathname) || pathname === '/api/docs-index'
+  const isDiscovery = isAgentDiscoveryEndpoint(pathname)
 
   const isHumanPageView = classification.visitorType === 'human' && !isDiscovery
 
@@ -178,7 +206,7 @@ async function buildAnalyticsPayload(request: NextRequest, pathname: string) {
     visitorType: classification.visitorType,
     agentSignal: classification.agentSignal,
     format: classification.format,
-    visitorKey: isHumanPageView ? await createDailyVisitorKey(request, getInternalAnalyticsSecretEdge()) : undefined,
+    visitorKey: isHumanPageView ? await createDailyVisitorKey(request, secret) : undefined,
     referrerDomain: isHumanPageView ? externalReferrerDomain(request.headers.get('referer'), request.url) : undefined,
   }
 }
@@ -186,14 +214,16 @@ async function buildAnalyticsPayload(request: NextRequest, pathname: string) {
 async function sendAnalyticsEvent(request: NextRequest, pathname: string) {
   if (!shouldTrackRequest(request, pathname)) return
 
-  const payload = await buildAnalyticsPayload(request, pathname)
+  const secret = await getInternalAnalyticsSecretEdge()
+  // Analytics is optional; a missing production signing secret disables the
+  // internal beacon instead of authenticating it with a public default.
+  if (!secret) return
+  const payload = await buildAnalyticsPayload(request, pathname, secret)
   // Ordinary crawlers are useful operational traffic, but counting them as
   // readers or AI tools corrupts every audience and engagement metric.
   if (payload.visitorType === 'bot') return
 
   const origin = request.nextUrl.origin
-  const secret = getInternalAnalyticsSecretEdge()
-
   await fetch(`${origin}/api/analytics/collect`, {
     method: 'POST',
     headers: {
@@ -230,9 +260,37 @@ function isManagedContentCachePath(pathname: string): boolean {
 function isManagedContentProjectionPath(pathname: string): boolean {
   return (
     isPublicAgentEndpoint(pathname) ||
+    isContentBearingAgentEndpoint(pathname) ||
     CONTENT_PROJECTION_API_PATHS.includes(pathname) ||
     CONTENT_PROJECTION_API_PREFIXES.some((prefix) => pathname.startsWith(prefix))
   )
+}
+
+/**
+ * Under reader auth every content representation may differ by reader
+ * (page body, sidebar, indexes), so none may enter a shared cache. Only
+ * framework assets and brand assets stay cacheable; they never carry content.
+ * Unlike the password gate this adds headers only: per-page decisions need
+ * frontmatter, which the edge runtime cannot read, so enforcement itself lives
+ * in the node routes.
+ */
+function variesByReader(pathname: string): boolean {
+  return (
+    !pathname.startsWith('/_next') &&
+    !pathname.startsWith('/brand/') &&
+    !pathname.startsWith('/api/brand') &&
+    pathname !== '/icon'
+  )
+}
+
+/** Prevent every intermediary from retaining a password-gated representation. */
+function applyPrivateNoStore(response: NextResponse, isProtected: boolean): NextResponse {
+  if (!isProtected) return response
+  response.headers.set('Cache-Control', 'private, no-store')
+  response.headers.set('CDN-Cache-Control', 'private, no-store')
+  response.headers.set('Netlify-CDN-Cache-Control', 'private, no-store')
+  response.headers.delete('Cache-Tag')
+  return response
 }
 
 /**
@@ -297,11 +355,29 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
   }
   const cloudAccess = await getCloudAccessConfigEdge(request.nextUrl.origin)
   const docsAccessEnabled = isDocsAccessEnabledEdge() || cloudAccess?.access?.mode === 'password'
+  // Reader auth (jwt/oidc, or a fail-closed misconfigured `auth` block) makes
+  // responses reader-specific: never shared-cacheable, never CDN-tagged.
+  const readerAuthActive = isReaderAuthActive()
 
   // Affirmative check for CDN cacheability: the access config must be present
   // AND public. `cloudAccess == null` (self-host, or a failed/timed-out grant
   // exchange) means "unknown", and unknown never enters a shared cache.
-  const contentCachePublic = !isDocsAccessEnabledEdge() && cloudAccess?.access?.mode === 'public'
+  const contentCachePublic = !isDocsAccessEnabledEdge() && !readerAuthActive && cloudAccess?.access?.mode === 'public'
+  const requiresDocsAccess =
+    docsAccessEnabled &&
+    !pathname.startsWith('/admin') &&
+    !pathname.startsWith('/api/admin') &&
+    !pathname.startsWith('/api/analytics') &&
+    !pathname.startsWith('/api/access') &&
+    pathname !== '/api/cloud/handshake' &&
+    !pathname.startsWith('/api/track') &&
+    !pathname.startsWith('/brand/') &&
+    !pathname.startsWith('/api/brand') &&
+    pathname !== '/access' &&
+    !pathname.startsWith('/api/reader/') &&
+    pathname !== '/login/jwt-callback' &&
+    !pathname.startsWith('/_next') &&
+    !isPublicAgentEndpoint(pathname)
 
   // Gate admin PAGES and admin APIs at the edge — except the public auth routes
   // (login/OIDC start/callback), which must be reachable pre-auth. This is
@@ -309,6 +385,7 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
   // by forgetting its own requireCapability check.
   const isAdminPage = pathname.startsWith('/admin') && pathname !== '/admin/login'
   const isAdminApi = pathname.startsWith('/api/admin') && !pathname.startsWith('/api/admin/auth')
+  const isPrivateResponse = requiresDocsAccess || (readerAuthActive && variesByReader(pathname))
   if ((isAdminPage || isAdminApi) && isAdminEnabledEdge()) {
     // Coarse, edge-safe check only: a valid break-glass password session OR a
     // valid signed OIDC identity cookie. The live role lookup happens in node.
@@ -324,36 +401,17 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
   }
 
   if (
-    docsAccessEnabled &&
-    !pathname.startsWith('/admin') &&
-    !pathname.startsWith('/api/admin') &&
-    !pathname.startsWith('/api/analytics') &&
-    !pathname.startsWith('/api/access') &&
-    // The same-origin Thally Cloud handshake authenticates server-to-server with the
-    // site token. It must remain reachable when the docs themselves are gated.
-    pathname !== '/api/cloud/handshake' &&
-    // The Thally Track webhook is called by GitHub, which can't hold a docs-access
-    // cookie — it authenticates itself via HMAC signature instead.
-    !pathname.startsWith('/api/track') &&
-    // Brand assets (logo/favicon and their API resolvers) stay reachable so the
-    // /access page itself — and the browser tab — can show the site's mark.
-    // They expose branding only, never gated content.
-    !pathname.startsWith('/brand/') &&
-    !pathname.startsWith('/api/brand') &&
-    pathname !== '/access' &&
-    !pathname.startsWith('/_next') &&
-    // Public agent-discovery + crawler-control docs (robots.txt, sitemap,
-    // llms.txt, /.well-known/*, auth.md, …) must stay machine-reachable even
-    // under docs-access protection — otherwise an MCP client or crawler gets
-    // the HTML /access page instead of the JSON/markdown it asked for, and the
-    // anonymous-access promises in auth.md / oauth-protected-resource go false.
-    !isPublicAgentEndpoint(pathname) &&
+    requiresDocsAccess &&
     !(await isDocsAccessGrantedEdge(request.cookies.get(DOCS_ACCESS_COOKIE)?.value, docsAccessEnabled))
   ) {
     // API clients need a parseable authentication failure. Browser pages keep
     // the interactive redirect below, while protected APIs avoid returning an
     // HTML login page after an automatic redirect.
-    if (pathname.startsWith('/api/')) {
+    if (
+      pathname.startsWith('/api/') ||
+      isContentBearingAgentEndpoint(pathname) ||
+      isAgentRequest(request, pathname)
+    ) {
       return problemResponse({
         status: 401,
         code: 'docs_access_required',
@@ -362,35 +420,21 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
         resolution:
           'Authenticate at `/access` or submit the password to `POST /api/access/auth`, then retry with the issued docs-access cookie.',
         instance: pathname,
-        headers: { 'Cache-Control': 'private, no-store' },
+        headers: {
+          'Cache-Control': 'private, no-store',
+          'CDN-Cache-Control': 'private, no-store',
+          'Netlify-CDN-Cache-Control': 'private, no-store',
+        },
       })
     }
     const accessUrl = request.nextUrl.clone()
     accessUrl.pathname = '/access'
     accessUrl.searchParams.set('next', pathname)
-    return NextResponse.redirect(accessUrl)
+    return applyPrivateNoStore(NextResponse.redirect(accessUrl), true)
   }
 
   if (shouldTrackRequest(request, pathname)) {
     event.waitUntil(sendAnalyticsEvent(request, pathname))
-  }
-
-  // The `/api` URL space also contains browser-rendered API-reference pages.
-  // Preserve those pages and every RSC navigation request, while ensuring a
-  // machine client never receives Next's HTML 404 for an unknown API root.
-  if (
-    pathname.startsWith('/api/') &&
-    !isKnownApiPath(pathname) &&
-    !isBrowserOrRscNavigation(request)
-  ) {
-    return problemResponse({
-      status: 404,
-      code: 'api_endpoint_not_found',
-      title: 'API endpoint not found',
-      detail: 'No public API endpoint matches this request path.',
-      resolution: 'Read `/openapi.json` for supported operations or `/api/docs-index` for published pages.',
-      instance: pathname,
-    })
   }
 
   // `.md` page mirrors rewrite to the markdown API — but /skill.md, /AGENTS.md,
@@ -423,10 +467,13 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
     const url = request.nextUrl.clone()
     url.pathname = `/api/markdown/${slugPath}`
     // URL-distinct (.md) — safe to fully CDN-cache.
-    return applyManagedContentCacheHeaders(NextResponse.rewrite(url), pathname, contentCachePublic)
+    return applyPrivateNoStore(
+      applyManagedContentCacheHeaders(NextResponse.rewrite(url), pathname, contentCachePublic),
+      isPrivateResponse,
+    )
   }
 
-  if (isAgentRequest(request, pathname) && !isMachineEndpoint(pathname)) {
+  if (shouldNegotiateDocPage(request, pathname)) {
     const slugPath = pathname === '/' ? 'introduction' : pathname.slice(1)
     const format = request.nextUrl.searchParams.get('format')
     const url = request.nextUrl.clone()
@@ -440,21 +487,22 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
 
     // Tag-only: this response varies on User-Agent/Accept under the browser
     // URL's cache key, so it must never be CDN-cached (see helper docs).
-    return applyManagedContentCacheHeaders(
+    return applyPrivateNoStore(applyManagedContentCacheHeaders(
       NextResponse.rewrite(url, { request: { headers: requestHeaders } }),
       pathname,
       contentCachePublic,
       { cdnCacheable: false },
-    )
+    ), isPrivateResponse)
   }
 
   // Advertise the llms.txt discovery endpoint on HTML doc-page responses, so
   // agents and crawlers find the index without guessing. The `Link` header stays
   // relative (resolved against the request URL per RFC 8288); `X-Llms-Txt` is a
   // custom header agents read directly, so it carries an absolute URL. Only
-  // content pages get the headers (not API/admin/_next).
+  // potential content pages get the headers, including API-reference pages;
+  // known service APIs, admin routes, and Next internals do not.
   const response = NextResponse.next()
-  if (!pathname.startsWith('/api') && !pathname.startsWith('/admin') && !pathname.startsWith('/_next')) {
+  if (isPotentialDocsPagePath(pathname)) {
     response.headers.append('Link', '</llms.txt>; rel="llms-txt"')
     // Standard relation types agents actually dereference (RFC 8288): the
     // Markdown alternate of the corpus, the OpenAPI description
@@ -464,7 +512,7 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
     response.headers.append('Link', '</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"')
     response.headers.set('X-Llms-Txt', `${request.nextUrl.origin}/llms.txt`)
   }
-  if (isCacheableDocsPage(request, pathname, docsAccessEnabled)) {
+  if (isCacheableDocsPage(request, pathname, docsAccessEnabled || readerAuthActive)) {
     // Middleware makes otherwise-static docs dynamic to Netlify. Documents are
     // immutable within an atomic deploy, so retain browser revalidation while
     // serving full page loads from the CDN.
@@ -477,9 +525,12 @@ export async function middleware(request: NextRequest, event: NextFetchEvent) {
   // and `_rsc` query from application code. Browser document paths therefore
   // stay tag-only here; the HTML-only block above owns their CDN lifetime.
   // Machine projections have dedicated URLs and remain safe to cache by URL.
-  return applyManagedContentCacheHeaders(response, pathname, contentCachePublic, {
-    cdnCacheable: isManagedContentProjectionPath(pathname),
-  })
+  return applyPrivateNoStore(
+    applyManagedContentCacheHeaders(response, pathname, contentCachePublic, {
+      cdnCacheable: isManagedContentProjectionPath(pathname),
+    }),
+    isPrivateResponse,
+  )
 }
 
 export const config = {
