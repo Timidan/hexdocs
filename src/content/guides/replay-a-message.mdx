@@ -25,24 +25,30 @@ Messages that ran earlier inside the same block are not replayed first. A dry ru
 ## Compare two snapshots
 
 <Steps>
-  <Step title="Open the message's dry run">
+<Step title="Open the message's dry run">
+
 Inspect `36589852-1` in [Message Inspector](https://hexkit.app/vara/transactions?tool=message&id=36589852-1), then open the **Dry run** tab.
-  </Step>
-  <Step title="Check the inputs">
+
+</Step>
+<Step title="Check the inputs">
+
 HexKit fills in two snapshots from the original message:
 
 - **Snapshot A** uses block `36589851`, the block before the message was sent.
 - **Snapshot B** uses `latest`.
 
 Both use the original sender, value, gas limit and arguments, `{"basket_id": 1633}`. Open **More inputs** on a snapshot to see or change the sender (origin), value, gas limit and raw payload.
-  </Step>
-  <Step title="Run both">
+
+</Step>
+<Step title="Run both">
+
 Select **Run both**. Rows whose results are different are marked **differs**.
 
 <Frame>
   <img src="/images/vara-dry-run-compare.png" alt="Dry run results: snapshot A at block 36589851 replies success Auto; snapshot B at the latest block panics with SettlementNotProposed" />
 </Frame>
-  </Step>
+
+</Step>
 </Steps>
 
 ## Read the result
