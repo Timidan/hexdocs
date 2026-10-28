@@ -62,6 +62,7 @@
   },
   "redirects": [
     { "source": "/changelog", "destination": "/", "permanent": false },
+    { "source": "/guides/ai-features", "destination": "/", "permanent": false },
     { "source": "/self-hosting", "destination": "/", "permanent": false },
     { "source": "/troubleshooting", "destination": "/", "permanent": false },
     { "source": "/concepts/intent-orders", "destination": "/", "permanent": false },

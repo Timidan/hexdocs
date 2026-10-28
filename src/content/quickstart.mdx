@@ -16,28 +16,28 @@ You'll open a message sent on Vara mainnet and find out exactly what it asked a 
 
 <Steps>
   <Step title="Open Message Inspector">
-    Go to [hexkit.app/vara/transactions?tool=message](https://hexkit.app/vara/transactions?tool=message).
+Go to [hexkit.app/vara/transactions?tool=message](https://hexkit.app/vara/transactions?tool=message).
 
-    From anywhere else in HexKit, select **Vara** in the chain switcher at the top left, then **Programs & messages → Message Inspector**.
+From anywhere else in HexKit, select **Vara** in the chain switcher at the top left, then **Programs & messages → Message Inspector**.
   </Step>
   <Step title="Inspect a message">
-    Enter `36589852-1` and select **Inspect**.
+Enter `36589852-1` and select **Inspect**.
 
-    `36589852-1` means extrinsic 1 in block 36,589,852. The field also accepts a Subscan or Gear IDEA link, or a message ID.
+`36589852-1` means extrinsic 1 in block 36,589,852. An extrinsic is what Vara, like other Substrate chains, calls a transaction. The field also accepts a Subscan or Gear IDEA link, or a message ID.
   </Step>
   <Step title="Read the summary">
-    After a few seconds the summary shows the call `gear.sendMessage` marked **Success**, sent to the **Polybaskets** program (`0xa749cc…2cba`).
+After a few seconds the summary shows the call `gear.sendMessage` marked **Success**, sent to the **Polybaskets** program (`0xa749cc…2cba`).
 
-    The **IDL from Gear IDEA** badge means HexKit found the program's Sails interface and used it to decode the message.
+The **IDL from Gear IDEA** badge means HexKit found the program's Sails interface and used it to decode the message.
 
-    <Frame>
-      <img src="/images/vara-message-inspector.png" alt="Message Inspector showing message 36589852-1 decoded as BasketMarket.FinalizeSettlement with basket_id 1633" />
-    </Frame>
+<Frame>
+  <img src="/images/vara-message-inspector.png" alt="Message Inspector showing message 36589852-1 decoded as BasketMarket.FinalizeSettlement with basket_id 1633" />
+</Frame>
   </Step>
   <Step title="Read what the message did">
-    - **Payload** shows the call: `BasketMarket.FinalizeSettlement` with `basket_id: 1633`.
-    - **Events** shows what the program emitted in the same block: `BasketMarket.SettlementFinalized` for basket `1633`, with a `payout_per_share` of `10000`.
-    - The **Diagnosis** tab confirms the message was included, processed, and answered with a successful reply code.
+- **Payload** shows the call: `BasketMarket.FinalizeSettlement` with `basket_id: 1633`.
+- **Events** shows what the program emitted in the same block: `BasketMarket.SettlementFinalized` for basket `1633`, with a `payout_per_share` of `10000`.
+- The **Diagnosis** tab confirms the message was included, processed, and answered with a successful reply code.
   </Step>
 </Steps>
 

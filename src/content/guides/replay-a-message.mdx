@@ -26,22 +26,22 @@ Messages that ran earlier inside the same block are not replayed first. A dry ru
 
 <Steps>
   <Step title="Open the message's dry run">
-    Inspect `36589852-1` in [Message Inspector](https://hexkit.app/vara/transactions?tool=message&id=36589852-1), then open the **Dry run** tab.
+Inspect `36589852-1` in [Message Inspector](https://hexkit.app/vara/transactions?tool=message&id=36589852-1), then open the **Dry run** tab.
   </Step>
   <Step title="Check the inputs">
-    HexKit fills in two snapshots from the original message:
+HexKit fills in two snapshots from the original message:
 
-    - **Snapshot A** uses block `36589851`, the block before the message was sent.
-    - **Snapshot B** uses `latest`.
+- **Snapshot A** uses block `36589851`, the block before the message was sent.
+- **Snapshot B** uses `latest`.
 
-    Both use the original sender, value, gas limit and arguments, `{"basket_id": 1633}`. Open **More inputs** on a snapshot to see or change the sender (origin), value, gas limit and raw payload.
+Both use the original sender, value, gas limit and arguments, `{"basket_id": 1633}`. Open **More inputs** on a snapshot to see or change the sender (origin), value, gas limit and raw payload.
   </Step>
   <Step title="Run both">
-    Select **Run both**. Rows whose results are different are marked **differs**.
+Select **Run both**. Rows whose results are different are marked **differs**.
 
-    <Frame>
-      <img src="/images/vara-dry-run-compare.png" alt="Dry run results: snapshot A at block 36589851 replies success Auto; snapshot B at the latest block panics with SettlementNotProposed" />
-    </Frame>
+<Frame>
+  <img src="/images/vara-dry-run-compare.png" alt="Dry run results: snapshot A at block 36589851 replies success Auto; snapshot B at the latest block panics with SettlementNotProposed" />
+</Frame>
   </Step>
 </Steps>
 
@@ -54,7 +54,7 @@ Messages that ran earlier inside the same block are not replayed first. A dry ru
 
 Before the message, the program accepts it. Today it panics with `SettlementNotProposed`, because there is no proposed settlement left for basket 1633. The `SettlementFinalized` event in the Quickstart shows why: this message finalized it. Sending the same message again would fail and still cost gas.
 
-**Spec version** differs too, because Vara upgraded its runtime between the two blocks. The panic is the program's own error, so the upgrade didn't cause it.
+**Spec version** differs too, because Vara upgraded its runtime between the two blocks. The upgrade didn't cause the panic: at block `36589853`, the block after the message and still on the old runtime, the dry run already panics with `SettlementNotProposed`.
 
 The block number for `latest` changes every few seconds, so yours will differ from the screenshot. The reply stays the same unless the program's state changes again.
 
@@ -66,7 +66,7 @@ The block number for `latest` changes every few seconds, so yours will differ fr
 
 ## Reproduce from the terminal
 
-Each snapshot has a **vara-wallet** copy button. It gives you the same dry run as a command for Gear's [vara-wallet](https://github.com/gear-foundation/vara-wallet) CLI, which you can install with `npm install -g vara-wallet`.
+Each snapshot has a **vara-wallet** copy button. It gives you the same dry run as a command for Gear's [vara-wallet](https://github.com/gear-foundation/vara-wallet) CLI, which you can install with `npm install -g vara-wallet`. It needs Node.js 22 or later.
 
 Run the snapshot before you copy it. The command pins the block by the hash from that snapshot's last run. If the snapshot hasn't run at its current block, the command has no `--at` flag and checks the latest block instead.
 
