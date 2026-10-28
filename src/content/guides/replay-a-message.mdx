@@ -1,8 +1,8 @@
 ---
 title: Replay a message at two blocks
 description: Use HexKit's dry run to compare how a Vara program replies to the same message at two blocks, then reproduce the result from the terminal.
-lastUpdated: 2026-10-27
-lastVerified: 2026-10-27
+lastUpdated: 2026-10-28
+lastVerified: 2026-10-28
 sources:
   - product/hexkit
 verifiedCommit: 4ae320be7ed785f1ef355aa9ad027479de1594bb
@@ -54,6 +54,8 @@ Messages that ran earlier inside the same block are not replayed first. A dry ru
 
 Before the message, the program accepts it. Today it panics with `SettlementNotProposed`, because there is no proposed settlement left for basket 1633. The `SettlementFinalized` event in the Quickstart shows why: this message finalized it. Sending the same message again would fail and still cost gas.
 
+**Spec version** differs too, because Vara upgraded its runtime between the two blocks. The panic is the program's own error, so the upgrade didn't cause it.
+
 The block number for `latest` changes every few seconds, so yours will differ from the screenshot. The reply stays the same unless the program's state changes again.
 
 ## Try other inputs
@@ -91,15 +93,13 @@ Put the command in a script or CI job when you need to check the same message ag
 
 Chain and program errors appear in the **Reply** row of the result table. Input errors appear in red under the snapshot's buttons.
 
-| Message | What it means | What to do |
-| --- | --- | --- |
-| `Program not active at block N` | The program did not exist yet at that block, or had exited. | Pick a block after the program was created. |
-| `History unavailable at block N on wss://archive-rpc.vara.network (state discarded; needs an archive node)` | The node no longer holds state for that block. | Pick a more recent block. |
-| `Dry run not supported by the runtime at block N` | The chain's runtime at that block predates the dry-run API. | Pick a later block. |
-| `The program panics: …` | The program rejected the message at that state. The text after the colon is the program's own error. | Read it as an application error, not a HexKit or RPC fault. |
-| `Block must be a number or latest` | The block field has something else in it, such as a hash or a comma. | Enter digits only, or `latest`. |
-| `Origin must be 32-byte hex` | The sender under **More inputs** is not a 32-byte hex ID. | Paste a `0x…` ActorId. To convert an SS58 address, use the [Address Converter](https://hexkit.app/vara/program-tools?tool=address). |
-| `Payload must be hex` | The raw payload is not `0x`-prefixed hex. | Edit **Args (JSON)** and select **Encode** instead of editing hex by hand. |
+- `Program not active at block N`: the program did not exist yet at that block, or had exited. Pick a block after the program was created.
+- `History unavailable at block N …`: the node no longer holds state for that block. Pick a more recent block.
+- `Dry run not supported by the runtime …`: the chain's runtime at that block predates the dry-run API. Pick a later block.
+- `The program panics: …`: the program rejected the message at that state, and the text after the colon is its own error. Read it as an application error, not a HexKit or RPC fault.
+- `Block must be a number or latest`: the block field has something else in it, such as a hash or a comma. Enter digits only, or `latest`.
+- `Origin must be 32-byte hex`: the sender under **More inputs** is not a 32-byte hex ID. Paste a `0x…` ActorId. To convert an SS58 address, use the [Address Converter](https://hexkit.app/vara/program-tools?tool=address).
+- `Payload must be hex`: the raw payload is not `0x`-prefixed hex. Edit **Args (JSON)** and select **Encode** instead of editing hex by hand.
 
 <Accordion title="The call shows as hex instead of names">
   HexKit could not find the program's IDL, so it cannot decode the payload. Open **Investigation → Load an IDL file…** and choose the program's `.idl` file. Both legacy Sails IDL and IDL v2 files load.
